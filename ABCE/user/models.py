@@ -1,0 +1,29 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
+
+
+# Create your models here.
+class CustomUser(AbstractUser):
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
+
+    phone_regex = RegexValidator(
+        regex=r'^(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$',
+        message="Номер должен быть в формате: +7 (999) 123-45-67 или 89991234567"
+    )
+    phone_number = models.CharField(
+        max_length=16,
+        unique=True,
+        verbose_name='Номер телефона'
+    )
+
+    def __str__(self):
+        return self.username or self.phone_number or self.email
+    
+
+class OTPCode(models.Model):
+    phone = models.CharField(max_length=20, db_index=True)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
