@@ -15,7 +15,14 @@ class CustomUser(AbstractUser):
     phone_number = models.CharField(
         max_length=16,
         unique=True,
-        verbose_name='Номер телефона'
+        verbose_name='Номер телефона',
+        validators=[phone_regex]
+    )
+    address = models.TextField(
+        max_length=500,
+        verbose_name='Адрес доставки',
+        default=True,
+        null=True,
     )
 
     def __str__(self):

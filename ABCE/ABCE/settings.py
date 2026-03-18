@@ -48,6 +48,7 @@ APP = [
     'user',
     'products',
     'cart',
+    'order',
 ]
 
 OTHER_APPS = [
@@ -119,6 +120,42 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser'
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication'
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [],
+    'DEFAULT_CONTENT_NEGOTIATION_CLASS': 'rest_framework.negotiation.DefaultContentNegotiation',
+    'DEFAULT_METADATA_CLASS': 'rest_framework.metadata.SimpleMetadata',
+    'DEFAULT_VERSIONING_CLASS': None,
+
+    # Generic view behavior
+    # 'DEFAULT_PAGINATION_CLASS': None,
+    # 'DEFAULT_FILTER_BACKENDS': [],
+
+    # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
+
+    # Throttling
+    'DEFAULT_THROTTLE_RATES': {
+        'user': 100,
+        'anon': 50,
+    },
+}
+
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
@@ -137,3 +174,5 @@ USE_TZ = True
 
 AUTH_USER_MODEL = 'user.CustomUser'
 STATIC_URL = 'static/'
+
+CART_SESSION_ID = 'cart'
