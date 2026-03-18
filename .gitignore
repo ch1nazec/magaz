@@ -214,6 +214,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-/categories/
+# Media files
 /brands/
 /product/
+/categories/
+*.webp
+*.jpg
+*.png

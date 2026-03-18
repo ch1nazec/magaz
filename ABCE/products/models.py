@@ -89,10 +89,24 @@ class ProductModel(models.Model):
 
 
 class Product(models.Model):
-    """Товар (без цены - цена в размерах)"""
-    name = models.CharField(max_length=100, verbose_name='Название товара')
-    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    """Товар"""
+    GENDER_CHOICES = [
+        ('M','Мужской'),
+        ('F','Женский'),
+        ('U','Унисекс'),
+    ]
+
+    gender = models.CharField(
+        max_length=1,
+        choices=GENDER_CHOICES,
+        default='U',
+        verbose_name='Пол',
+        db_index=True,
+    )
+    name = models.CharField(max_length=300, verbose_name='Название товара')
+    slug = models.SlugField(max_length=300, unique=True, blank=True)
     description = models.TextField(max_length=1000, verbose_name='Описание товара', blank=True)
+    attributes = models.JSONField(default=dict, blank=True, verbose_name='Характеристики')
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -131,6 +145,19 @@ class Product(models.Model):
         return self.name
 
 
+class Color(models.Model):
+    color = models.CharField(max_length=50, verbose_name='Название цвета')
+    slug = models.SlugField(max_length=50)
+    hexcode = models.CharField(max_length=7, verbose_name='HEX код', blank=True)
+
+    class Meta:
+        verbose_name = 'Цвет'
+        verbose_name_plural = 'Цвета'
+    
+    def __str__(self):
+        return self.color
+
+
 class Size(models.Model):
     """Размеры (S, M, L, 42, 43 и т.д.)"""
     name = models.CharField(max_length=20, verbose_name='Размер модели')
@@ -150,9 +177,10 @@ class Size(models.Model):
         return self.name
 
 
-class ProductToSize(models.Model):
+class ProductVariant(models.Model):
     """СВЯЗЬ ТОВАРА С РАЗМЕРОМ (здесь живет ЦЕНА и КОЛИЧЕСТВО)"""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sizes', verbose_name='Товар')
+    color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True)
     size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='products', verbose_name='Размер')
     price = models.DecimalField(
         max_digits=10,
@@ -162,9 +190,9 @@ class ProductToSize(models.Model):
     quantity = models.PositiveIntegerField(default=0, verbose_name='Количество')
 
     class Meta:
-        unique_together = ['product', 'size']
-        verbose_name = 'Размер товара'
-        verbose_name_plural = 'Размеры товаров'
+        unique_together = ['product', 'color', 'size']
+        verbose_name = 'Выбор товара'
+        verbose_name_plural = 'Выборы товаров'
     
     def __str__(self):
         return f"{self.product.name} - {self.size.name}: {self.price}₽"
@@ -195,6 +223,12 @@ class ImageProduct(models.Model):
     )
     is_main = models.BooleanField(default=False, verbose_name='Главное')
     order = models.PositiveIntegerField(default=0, verbose_name='Порядок')
+    color = models.ForeignKey(
+        Color,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='product'
+    )
 
     class Meta:
         ordering = ['order', '-is_main']

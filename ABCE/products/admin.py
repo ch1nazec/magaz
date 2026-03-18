@@ -1,12 +1,34 @@
 from django.contrib import admin
+from django.db import models
 from .models import (
     Category, Brand, ProductModel, Product, 
-    Size, ProductToSize, ImageProduct, Tag, TagToProduct
-)
+    Size, ProductVariant, ImageProduct, Tag, TagToProduct, Color)
+from django.forms import widgets
 
-class ProductToSizeInline(admin.TabularInline):
+
+class JSONFieldWidget(widgets.Textarea):
+    def format_value(self, value):
+        if value and isinstance(value, dict):
+            import json
+            return json.dumps(value, indent=2, ensure_ascii=False)
+        return super().format_value(value)
+
+
+@admin.register(Color)
+class ColorAdmin(admin.ModelAdmin):
+    list_display = ['color', 'slug', 'hexcode']
+    list_editable = ['slug', 'hexcode']
+    search_fields = ['color']
+    prepopulated_fields = {'slug': ('color',)}
+    fieldsets = (
+        ('Основное', {
+            'fields': ('color', 'slug', 'hexcode')
+        }),
+    )
+
+class ProductVariantInline(admin.TabularInline):
     """Инлайн для размеров товара"""
-    model = ProductToSize
+    model = ProductVariant
     extra = 1
     fields = ['size', 'price', 'quantity']
     autocomplete_fields = ['size']
@@ -15,7 +37,9 @@ class ImageProductInline(admin.TabularInline):
     """Инлайн для изображений товара"""
     model = ImageProduct
     extra = 1
-    fields = ['image', 'image_type', 'is_main', 'order']
+    fields = ['image', 'image_type', 'is_main', 'order', 'color']
+    autocomplete_fields = ['color']
+    
 
 class TagToProductInline(admin.TabularInline):
     """Инлайн для тегов товара"""
@@ -63,18 +87,22 @@ class ProductModelAdmin(admin.ModelAdmin):
 class ProductAdmin(admin.ModelAdmin):
     list_display = [
         'name', 'category', 'brand', 'model', 
-        'is_active', 'is_new', 'is_bestseller'
+        'is_active', 'is_new', 'is_bestseller', 'gender'
     ]
     list_filter = ['category', 'brand', 'is_active', 'is_new', 'is_bestseller']
     search_fields = ['name', 'description']
     autocomplete_fields = ['category', 'brand', 'model']
     prepopulated_fields = {'slug': ('name',)}
     
-    inlines = [ProductToSizeInline, ImageProductInline, TagToProductInline]
+    inlines = [ProductVariantInline, ImageProductInline, TagToProductInline]
     
+    formfield_overrides = {
+        models.JSONField: {'widget': JSONFieldWidget(attrs={'rows': 10})},
+    }
+
     fieldsets = (
         ('Основное', {
-            'fields': ('name', 'slug', 'description')
+            'fields': ('name', 'slug', 'description', 'gender')
         }),
         ('Связи', {
             'fields': ('category', 'brand', 'model')
@@ -90,8 +118,8 @@ class SizeAdmin(admin.ModelAdmin):
     search_fields = ['name']
     prepopulated_fields = {'slug': ('name',)}
 
-@admin.register(ProductToSize)
-class ProductToSizeAdmin(admin.ModelAdmin):
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
     list_display = ['product', 'size', 'price', 'quantity']
     list_filter = ['size']
     search_fields = ['product__name', 'size__name']
@@ -99,7 +127,7 @@ class ProductToSizeAdmin(admin.ModelAdmin):
 
 @admin.register(ImageProduct)
 class ImageProductAdmin(admin.ModelAdmin):
-    list_display = ['product', 'image_type', 'is_main', 'order']
+    list_display = ['product', 'image_type', 'is_main', 'order', 'color']
     list_filter = ['image_type', 'is_main']
     search_fields = ['product__name']
     autocomplete_fields = ['product']

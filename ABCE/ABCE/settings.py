@@ -47,6 +47,7 @@ DJANGO_APP = [
 APP = [
     'user',
     'products',
+    'cart',
 ]
 
 OTHER_APPS = [
