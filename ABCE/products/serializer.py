@@ -3,8 +3,6 @@ from .models import (Category, Brand, ProductModel,
                      Product, Color, Size,
                      ProductVariant, ImageProduct, Tag,
                      TagToProduct)
-from django.db import models
-from decimal import Decimal
 
 
 def check_name(name, value):

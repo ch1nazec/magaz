@@ -52,7 +52,6 @@ APP = [
 ]
 
 OTHER_APPS = [
-    'drf_recursive'
 ]
 
 INSTALLED_APPS = DJANGO_APP + APP + OTHER_APPS
