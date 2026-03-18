@@ -52,7 +52,7 @@ APP = [
 ]
 
 OTHER_APPS = [
-
+    'drf_recursive'
 ]
 
 INSTALLED_APPS = DJANGO_APP + APP + OTHER_APPS
@@ -154,8 +154,6 @@ REST_FRAMEWORK = {
         'anon': 50,
     },
 }
-
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
