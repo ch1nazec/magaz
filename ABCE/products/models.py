@@ -1,21 +1,25 @@
 from django.db import models
 from django.utils.text import slugify
+from mptt.models import MPTTModel, TreeForeignKey
 
 
 # Create your models here.
-class Category(models.Model):
+class Category(MPTTModel):
     """Категории товаров со вложенностью"""
 
     name = models.CharField(max_length=100, verbose_name='Название категории')
     slug = models.SlugField(max_length=100, unique=True)
     image = models.ImageField(upload_to='categories/', verbose_name='Изображение категории', blank=True, null=True)
-    parent = models.ForeignKey(
+    parent = TreeForeignKey(
         'self',
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name='children'
     )
+
+    class MPTTMeta:
+        order_insertion_by = ['name']
 
     class Meta:
         ordering = ['name']

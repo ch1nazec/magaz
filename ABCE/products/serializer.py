@@ -20,17 +20,18 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = [
-            'name', 'image',
-            'parent',
+            'id', 'name', 'slug', 'image',
+            'parent', 'children'
         ]
     
     def validate_name(self, value: str) -> str:
         return check_name(name='Категория', value=value)
     
     def get_children(self, obj):
-        serializer = CategorySerializer(instance=obj.children.all(), many=True)
-        return serializer.data
-
+        children = obj.children.all()
+        if children:
+            return CategorySerializer(instance=obj.children.all(), many=True).data
+        return []
 
 class BrandSerializer(serializers.ModelSerializer):
     """Сериализатор брендов"""
@@ -58,10 +59,11 @@ class ProductSerializer(serializers.ModelSerializer):
     model = ProductModelSerializer()
     class Meta:
         model = Product
-        fields = [
+        fields = [ 'id',
             'gender', 'name',
             'description', 'attributes',
-            'is_active', 'is_new', 'is_bestseller'
+            'is_active', 'is_new', 'is_bestseller', 'model',
+             'category', 'brand', 'slug'
         ]
 
 
