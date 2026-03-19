@@ -30,7 +30,7 @@ class CategorySerializer(serializers.ModelSerializer):
     def get_children(self, obj):
         children = obj.children.all()
         if children:
-            return CategorySerializer(instance=obj.children.all(), many=True).data
+            return CategorySerializer(obj.children.all(), many=True).data
         return []
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -56,15 +56,16 @@ class ProductModelSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     """Сериализатор продуктов"""
-    model = ProductModelSerializer()
+    product_model  = ProductModelSerializer(source='model', read_only=True)
     class Meta:
         model = Product
         fields = [ 'id',
             'gender', 'name',
             'description', 'attributes',
-            'is_active', 'is_new', 'is_bestseller', 'model',
-             'category', 'brand', 'slug'
+            'is_active', 'is_new', 'is_bestseller', 'product_model',
+             'category', 'brand', 'slug', 'category_id', 'brand_id'
         ]
+    
 
 
 class ColorSerializer(serializers.ModelSerializer):
@@ -72,7 +73,7 @@ class ColorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Color
         fields = [
-            'name', 'hexcode'
+            "id", 'color', 'hexcode', 'slug'
         ]
 
 
@@ -80,11 +81,14 @@ class SizeSerializer(serializers.ModelSerializer):
     """Сериализатор размеров"""
     class Meta:
         model = Size
-        fields = ['name']
+        fields = ["id", 'name']
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     """Сериализатор вариантов продукта"""
+    product = ProductSerializer()
+    product_id = serializers.SerializerMethodField()
+
     color = ColorSerializer(read_only=True)
     size = SizeSerializer(read_only=True)
 
@@ -96,8 +100,11 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariant
         fields = [
+            'id', 'product_id', 'product',
             'price', 'quantity', 'color',
             'size', 'color_id', 'size_id']
+    def get_product_id(self, obj):
+        return obj.product.id
 
 
 class ImageProductSerializer(serializers.ModelSerializer):
@@ -110,8 +117,8 @@ class ImageProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImageProduct
         fields = [
-            'image', 'image_type', 'is_main',
-            'order', 'product_id'
+            "id", 'product_id', 'image', 'color', 'image_type', 'is_main',
+            'order', 
         ]
 
 
@@ -119,17 +126,22 @@ class TagSerializer(serializers.ModelSerializer):
     """Сериализатор тегов"""
     class Meta:
         model = Tag
-        fields = ['name']
+        fields = ["id", 'name', "slug"]
 
 
 class TagToProductSerializer(serializers.ModelSerializer):
-    """Сериализатор тегов продукта"""
-    tag = TagSerializer()
-    product = ProductSerializer()
-
+    tag_id = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(), source='tag', write_only=True
+    )
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), source='product', write_only=True
+    )
+    tag = TagSerializer(read_only=True)
+    product = ProductSerializer(read_only=True)
+    
     class Meta:
         model = TagToProduct
-        fields = ['id', 'product', 'tag']
+        fields = ['id', 'tag', 'product', 'tag_id', 'product_id']
 
 
 
@@ -149,6 +161,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'slug',
+            'is_active', 'is_new', 'is_bestseller'
         ]
     
     def get_main_image(self, obj):

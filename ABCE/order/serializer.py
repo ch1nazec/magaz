@@ -9,6 +9,15 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = ['product', 'color',
             'size', 'price', 'quantity']
+    
+    def validate_price(self, attr):
+        if attr < 0:
+            return serializers.ValidationError('Цена не может быть меньше 0')
+        return attr
+    
+    def validate_quantity(self, attr):
+        if attr < 0:
+            return serializers.ValidationError('Количество продукта не может равнятся 0')
 
 
 class OrderSerializer(serializers.ModelSerializer):

@@ -1,19 +1,26 @@
 from rest_framework import (viewsets,
-                            permissions,
-                            generics, views)
+                            permissions,)
 from rest_framework.response import Response
+from rest_framework import status
 from rest_framework.decorators import action
-from .models import Product, Category
-from .serializer import (ProductSerializer,
-                         CategoryListSerializer,
-                        CategorySerializer)
+from .models import Product, Category, ImageProduct, Color, Size, ProductVariant, Tag, TagToProduct
+from .serializer import (ProductSerializer, ImageProductSerializer,
+                         CategoryListSerializer, ColorSerializer,
+                        CategorySerializer, SizeSerializer,
+                        TagToProductSerializer, TagSerializer, ProductVariantSerializer)
+
+
+class BaseAdminViewSet(viewsets.ModelViewSet):
+    def get_permissions(self):
+        if self.action in {'create', 'destroy', 'update', 'partial_update'}:
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
 
 
 # Create your views here.
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = [permissions.AllowAny]
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -24,7 +31,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(BaseAdminViewSet):
     queryset = Category.objects.all()
 
     def get_serializer_class(self):
@@ -32,13 +39,92 @@ class CategoryViewSet(viewsets.ModelViewSet):
             return CategoryListSerializer
         return CategorySerializer
     
-    def get_permissions(self):
-        if self.action in {'create', 'destroy', 'update', 'partial_update'}:
-            return [permissions.IsAdminUser()]
-        return [permissions.AllowAny()]
-    
     @action(detail=False, methods=['get'])
     def tree(self, request):
         categories = Category.objects.filter(parent__isnull=True)
         serializer = CategorySerializer(categories, many=True)
         return Response(serializer.data)
+
+
+class ImagesViewSet(BaseAdminViewSet):
+    queryset = ImageProduct.objects.all()
+    serializer_class = ImageProductSerializer
+
+    def get_queryset(self):
+        queryset = ImageProduct.objects.all().select_related('product', 'color')
+        
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        
+        color_id = self.request.query_params.get('color')
+        if color_id:
+            queryset = queryset.filter(color_id=color_id)
+
+        return queryset
+    
+    @action(detail=False, methods=['post'], url_path='upload-multiple')
+    def upload_multiple(self, request):
+        images = request.FILES.getlist('images')
+        product_id = request.data.get('product_id')
+
+        if not product_id:
+            return Response(data={
+                'error': 'product_id обязателен!'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        all_images = []
+        for image in images:
+            img = ImageProduct.objects.create(
+                product_id=product_id,
+                image=image,
+                image_type=request.data.get('image_type', 'gallery'))
+            all_images.append(img)
+        
+        serializer = self.get_serializer(all_images, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['post'])
+    def set_main(self, request, pk=None):
+        image = self.get_object()
+
+        ImageProduct.objects.filter(
+            product=image.product,
+            is_main=True,
+        ).exclude(pk=image.pk).update(is_main=False)
+
+        image.is_main = True
+        image.save()
+        return Response({'status': 'Success!'})
+    
+
+class ColorViewSet(BaseAdminViewSet):
+    serializer_class = ColorSerializer
+    queryset = Color.objects.all()
+
+
+class SizeViewSet(BaseAdminViewSet):
+    serializer_class = SizeSerializer
+    queryset = Size.objects.all()
+
+
+class ProductVariantViewSet(BaseAdminViewSet):
+    serializer_class = ProductVariantSerializer
+    queryset = ProductVariant.objects.all().select_related(
+        'product',
+        'product__category',
+        'product__brand',
+        'product__model',
+        'color',
+        'size'
+    )
+
+
+class TagViewSet(BaseAdminViewSet):
+    serializer_class = TagSerializer
+    queryset = Tag.objects.all()
+
+
+class TagToProductViewSet(BaseAdminViewSet):
+    serializer_class = TagToProductSerializer
+    queryset = TagToProduct.objects.all()
