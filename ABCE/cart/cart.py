@@ -6,6 +6,7 @@ from products.models import ProductVariant
 class Cart:
     def __init__(self, request) -> None:
         self.session = request.session
+        self.request = request
         cart = self.session.get(settings.CART_SESSION_ID)
 
         if not cart:
@@ -43,15 +44,33 @@ class Cart:
 
     def __iter__(self):
         product_ids = self.cart.keys()
-        variants = ProductVariant.objects.filter(id__in=product_ids).select_related('product')
+        variants = ProductVariant.objects.filter(id__in=product_ids).select_related('product', 'color').prefetch_related('product__images')
         cart = self.cart.copy()
 
         for variant in variants:
-            cart[str(variant.id)]['variant'] = variant
+            cart[str(variant.id)]['variant'] = variant.id
+            cart[str(variant.id)]['variant_data'] = {
+            'id': variant.id,
+            'price': str(variant.price),
+            'product': {
+                'id': variant.product.id,
+                'name': variant.product.name,
+                'slug': variant.product.slug,
+            },
+            'color': {
+                'id': variant.color.id if variant.color else None,
+                'name': variant.color.color if variant.color else None,
+                'hexcode': variant.color.hexcode if variant.color else None
+            } if variant.color else None,
+            'size': {
+                'id': variant.size.id,
+                'name': variant.size.name
+            },
+            "image": self.request.build_absolute_uri(variant.product.images.filter(color=variant.color).first())
+        }
         
         for item in cart.values():
-            item['price'] = Decimal(item['price'])
-            item['total_price'] = item['price'] * item['quantity']
+            item['price'] = str(Decimal(item['price']))
             yield item
     
 

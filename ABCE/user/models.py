@@ -8,6 +8,9 @@ class CustomUser(AbstractUser):
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
 
+    first_name = models.CharField(max_length=30)
+    last_name = models.CharField(max_length=30, blank=True)
+
     phone_regex = RegexValidator(
         regex=r'^(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$',
         message="Номер должен быть в формате: +7 (999) 123-45-67 или 89991234567"
@@ -24,6 +27,10 @@ class CustomUser(AbstractUser):
         default=True,
         null=True,
     )
+    telegram_id = models.PositiveIntegerField(verbose_name='Айди тг пользователя', primary_key=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.username or self.phone_number or self.email

@@ -19,5 +19,5 @@ router.register(r'tags', TagViewSet)
 router.register(r'tagtoproducts', TagToProductViewSet)
 
 urlpatterns = [
-    path('api/', include(router.urls), name='product'),
+    path('', include(router.urls), name='product'),
 ]

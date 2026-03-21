@@ -55,7 +55,9 @@ OTHER_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
-    'mptt'
+    'mptt',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 INSTALLED_APPS = DJANGO_APP + APP + OTHER_APPS
@@ -135,7 +137,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',

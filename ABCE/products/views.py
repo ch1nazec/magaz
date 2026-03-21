@@ -8,13 +8,7 @@ from .serializer import (ProductSerializer, ImageProductSerializer,
                          CategoryListSerializer, ColorSerializer,
                         CategorySerializer, SizeSerializer,
                         TagToProductSerializer, TagSerializer, ProductVariantSerializer)
-
-
-class BaseAdminViewSet(viewsets.ModelViewSet):
-    def get_permissions(self):
-        if self.action in {'create', 'destroy', 'update', 'partial_update'}:
-            return [permissions.IsAdminUser()]
-        return [permissions.AllowAny()]
+from others.permissions import BaseAdminViewSet
 
 
 # Create your views here.

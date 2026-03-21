@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import RegexValidator
 from user.models import CustomUser
+from products.models import ProductVariant
 
 
 # Create your models here.
@@ -58,8 +59,8 @@ class OrderItem(models.Model):
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
-        related_name='items'
-    )
+        related_name='items')
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True)
     product = models.CharField(max_length=200, verbose_name='Название')
     color = models.CharField(max_length=100, verbose_name='Цвет товара')
     size = models.CharField(max_length=20, verbose_name='Размер')
