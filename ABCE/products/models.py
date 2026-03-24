@@ -51,6 +51,8 @@ class Brand(models.Model):
         verbose_name = 'Бренд'
         verbose_name_plural = 'Бренды'
 
+        indexes = [models.Index(fields=['name'])]
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
@@ -81,6 +83,11 @@ class ProductModel(models.Model):
         unique_together = ['brand', 'name']
         verbose_name = 'Модель'
         verbose_name_plural = 'Модели'
+
+        indexes = [
+            models.Index(fields=['name', 'brand']),
+            models.Index(fields=['brand']),
+            ]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -143,6 +150,8 @@ class Product(models.Model):
         indexes = [
             models.Index(fields=['category', 'is_active']),
             models.Index(fields=['brand']),
+            models.Index(fields=['name']),
+            models.Index(fields=['model']),
         ]
 
     def __str__(self):
@@ -197,6 +206,10 @@ class ProductVariant(models.Model):
         unique_together = ['product', 'color', 'size']
         verbose_name = 'Выбор товара'
         verbose_name_plural = 'Выборы товаров'
+        indexes = [
+            models.Index(fields=['product', 'color', 'size']),
+            models.Index(fields=['price']),
+            models.Index(fields=['quantity']),]
     
     def __str__(self):
         return f"{self.product.name} - {self.size.name}: {self.price}₽"

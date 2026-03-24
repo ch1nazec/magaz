@@ -11,6 +11,7 @@ from .serializer import (ProductSerializer, ImageProductSerializer,
 from others.permissions import BaseAdminViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
+from .filters import ProductVariantFilter
 
 
 # Create your views here.
@@ -30,6 +31,21 @@ class ProductViewSet(viewsets.ModelViewSet):
             permission_classes = [permissions.AllowAny]
 
         return [permission() for permission in permission_classes]
+
+class ProductVariantViewSet(BaseAdminViewSet):
+    serializer_class = ProductVariantSerializer
+    queryset = ProductVariant.objects.all().select_related(
+        'product',
+        'product__category',
+        'product__brand',
+        'product__model',
+        'color',
+        'size')
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ProductVariantFilter
+    search_fields = ['product__name']
+    ordering_fields = ['product__name', 'price']
+    ordering = ['product__name']
 
 
 class CategoryViewSet(BaseAdminViewSet):
@@ -107,17 +123,6 @@ class ColorViewSet(BaseAdminViewSet):
 class SizeViewSet(BaseAdminViewSet):
     serializer_class = SizeSerializer
     queryset = Size.objects.all()
-
-
-class ProductVariantViewSet(BaseAdminViewSet):
-    serializer_class = ProductVariantSerializer
-    queryset = ProductVariant.objects.all().select_related(
-        'product',
-        'product__category',
-        'product__brand',
-        'product__model',
-        'color',
-        'size')
 
 
 class TagViewSet(BaseAdminViewSet):
