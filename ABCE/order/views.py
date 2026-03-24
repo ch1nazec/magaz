@@ -135,7 +135,6 @@ def order_get(request, order_id, order=None):
 
 
 @api_view(['PATCH'])
-@admin_check
 @order_exists
 @order_cancel_check
 def cancel_order(request, order_id, order=None):

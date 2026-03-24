@@ -63,7 +63,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'gender', 'name',
             'description', 'attributes',
             'is_active', 'is_new', 'is_bestseller', 'product_model',
-             'category', 'brand', 'slug', 'category_id', 'brand_id'
+            'brand', 'slug', 'category_id', 'brand_id'
         ]
     
 

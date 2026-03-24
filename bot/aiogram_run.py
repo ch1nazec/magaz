@@ -1,9 +1,10 @@
 import logging
 from aiogram.types import BotCommand, BotCommandScopeDefault
-from aiohttp import web
+from aiohttp import web, ClientSession
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from create_bot import bot, dp, BASE_URL, HOST, PORT, WEBHOOK_APP, ADMIN
-from handlers.start import router
+from handlers.main import main_router
+from middleware.session_middleware import SessionMiddleware
 
 
 async def set_commands():
@@ -13,9 +14,13 @@ async def set_commands():
 
 async def on_startup():
     """Включить бота"""
+
     await set_commands()
     await bot.set_webhook(f"{BASE_URL}{WEBHOOK_APP}")
     await bot.send_message(chat_id=ADMIN, text='Бот запущен')
+
+    session = ClientSession()
+    dp.update.middleware(SessionMiddleware(session))
 
 
 async def on_shutdown() -> None:
@@ -28,7 +33,7 @@ async def on_shutdown() -> None:
 
 
 def main():
-    dp.include_router(router=router)
+    dp.include_router(router=main_router)
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
@@ -36,7 +41,7 @@ def main():
     app = web.Application()
     webhook_request_handler = SimpleRequestHandler(
         dispatcher=dp, bot=bot)
-    
+
     # регаем обработчик событий на опр. путь
     webhook_request_handler.register(app, path=WEBHOOK_APP)
     setup_application(app, dp, bot=bot)

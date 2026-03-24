@@ -9,12 +9,19 @@ from .serializer import (ProductSerializer, ImageProductSerializer,
                         CategorySerializer, SizeSerializer,
                         TagToProductSerializer, TagSerializer, ProductVariantSerializer)
 from others.permissions import BaseAdminViewSet
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 
 
 # Create your views here.
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+
+    search_fields = ['name', 'description']
+    filterset_fields = ['gender', 'category_id', 'name', 'is_active', 'brand']
+    ordering_fields = ['name', 'gender', 'product_model__name', 'product_model__brand__name']
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -110,8 +117,7 @@ class ProductVariantViewSet(BaseAdminViewSet):
         'product__brand',
         'product__model',
         'color',
-        'size'
-    )
+        'size')
 
 
 class TagViewSet(BaseAdminViewSet):
