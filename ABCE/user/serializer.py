@@ -70,7 +70,7 @@ class LoginUserSerializer(serializers.Serializer):
 class UpdateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'address']
+        fields = ['first_name', 'last_name', 'address', 'telegram_id']
 
     def update(self, instance, validated_data: dict):
         for attr, values in validated_data.items():

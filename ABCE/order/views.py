@@ -1,6 +1,7 @@
-from rest_framework import views, permissions, status
+from rest_framework import views, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from django_filters.rest_framework import DjangoFilterBackend
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -9,6 +10,8 @@ from django.db.models import Q, F
 from .models import Order, OrderItem
 from products.models import Product, ProductVariant
 from .serializer import OrderSerializer, OrderItemSerializer
+
+from .permissions import IsAdminOrBot
 
 from cart.cart import Cart
 
@@ -50,18 +53,15 @@ def order_exists(func):
 
 
 # Create your views here.
-class OrderAPIView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        order = Order.objects.filter(user=user)
-        serializer = OrderSerializer(order, many=True)
-
-        return Response(serializer.data)
+class OrderViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrBot]
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['user__telegram_id', 'status', 'phone_number']
     
 
-    def post(self, request):
+    def create(self, request):
         with transaction.atomic():
             cart = Cart(request)
             user = request.user
@@ -78,7 +78,7 @@ class OrderAPIView(views.APIView):
                 address=user.address,
                 comment=request.data.get('comment', ''),
                 total_amount=0,
-                status='новый',
+                status='new',
             )
 
             total_amount = 0
@@ -91,7 +91,6 @@ class OrderAPIView(views.APIView):
                 else:
                     variant_id = variant_data
 
-                variant = ProductVariant.objects.select_for_update().get(id=variant_id)
                 variant = ProductVariant.objects.select_related('product', 'color', 'size').get(id=variant_id)
 
                 quantity = item['quantity']
@@ -144,16 +143,10 @@ def cancel_order(request, order_id, order=None):
                 item.variant.quantity += item.quantity
                 item.variant.save()
 
-        order.status = 'отменён'
+        order.status = 'cancelled'
         order.save()
 
         order_item = order.items.all()
-        # for item in order_item:
-        #     ProductVariant.objects.filter(Q(product__name=item.product)
-        #                                   & Q(color__name=item.color)
-        #                                   & Q(size__name=item.size)
-        #                                   ).update(quantity=F('quantity') + item.quantity)
-        
         return Response({'message': f'Успешно отменён заказ #{order.pk}!'})
 
 
@@ -162,8 +155,7 @@ def cancel_order(request, order_id, order=None):
 @order_exists
 @order_cancel_check
 def sent_order(request, order_id, order=None):
-
-    order.status = 'отправлен'
+    order.status = 'shipped'
     order.save()
     return Response({'message': 'Заказ отправлен!'}, status=status.HTTP_202_ACCEPTED)
 
@@ -174,6 +166,6 @@ def sent_order(request, order_id, order=None):
 @order_cancel_check
 def confirm_order(request, order_id, order=None):
     
-    order.status = 'доставлен'
+    order.status = 'delivered'
     order.save()
     return Response({'message': 'Заказ успешно доставлен!'}, status=status.HTTP_202_ACCEPTED)

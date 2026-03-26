@@ -2,10 +2,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import CustomUser
 from .serializer import (UserSerializer, RegistartionUserSerializer,
-                         LoginUserSerializer, PasswordChangeSerializer)
+                         LoginUserSerializer, PasswordChangeSerializer, UpdateUserSerializer)
 
 
 # Create your views here.
@@ -69,6 +70,37 @@ class ChangePasswordView(generics.UpdateAPIView):
         return Response({
             'message': 'Пароль успешно сменили.'
         }, status=status.HTTP_200_OK)
+
+
+class UpdateUserView(generics.UpdateAPIView):
+    serializer_class = UpdateUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save()
+        return Response({'message': 'Данные были успешно изменены'})
+
+
+class TelegramLinkUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, tg_id):
+        user = request.user
+
+        if user.telegram_id == tg_id:
+            return Response({'error': 'Не нужно, вы уже привязали аккаунт.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        check = CustomUser.objects.filter(telegram_id=tg_id).first()
+        if check:
+            return Response({'error': 'Пользователь уже привязан к другому аккаунту.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.telegram_id = tg_id
+        user.save()
+
+        return Response({'message': 'Связка произошла успешно'}, status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(['POST'])

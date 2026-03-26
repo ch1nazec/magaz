@@ -10,7 +10,7 @@ class CustomUserAdmin(UserAdmin):
     
     # Поля, отображаемые в списке пользователей
     list_display = [
-        'username', 'phone_number', 'email', 
+        'username', 'phone_number', 'email', 'telegram_id',
         'address', 'is_staff', 'is_active'
     ]
     
@@ -43,7 +43,7 @@ class CustomUserAdmin(UserAdmin):
         (_('Personal info'), {
             'fields': (
                 'first_name', 'last_name', 'email',
-                'phone_number', 'address'
+                'phone_number', 'address', 'telegram_id'
             )
         }),
         (_('Permissions'), {

@@ -1,13 +1,15 @@
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
+from kb.inline import link_start_button
 
 
 router = Router()
 
 @router.message(CommandStart())
 async def command_start_handler(mess: Message):
-    await mess.answer('Ну здарова, квакозябра!')
+    start_inline = link_start_button(mess.from_user.id)
+    await mess.answer('Привет! для привязки аккаунта нажми на кнопку ниже', reply_markup=start_inline)
 
 
 # @router.message()

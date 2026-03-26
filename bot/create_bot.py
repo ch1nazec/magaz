@@ -3,6 +3,9 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from decouple import config
 
+from redis.asyncio import Redis
+from aiogram.fsm.storage.redis import RedisStorage
+
 
 BOT_API = config('BOT_API')
 HOST = config('HOST')
@@ -13,6 +16,10 @@ ADMIN = config('ADMIN_ID')
 
 BACKEND_URL = config('BACKEND_URL')
 BACKEND_PORT = config('BACKEND_PORT')
+
+REDIS_HOST = config('REDIS_HOST')
+REDIS_PORT = config('REDIS_PORT')
+
 
 
 bot = Bot(token=BOT_API, default=DefaultBotProperties(parse_mode=ParseMode.HTML))

@@ -97,6 +97,17 @@ WSGI_APPLICATION = 'ABCE.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+CACHES = {
+    # "default" is the alias.
+    "default": {
+        # Here, we're using the Redis cache backend.
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+
+        # A LOCATION parameter to specify the Redis server's address and port.
+        "LOCATION": "redis://127.0.0.1:6379",
+    }
+}
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -164,21 +175,23 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSIONING_CLASS': None,
 
     # Generic view behavior
-    # 'DEFAULT_PAGINATION_CLASS': None,
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 
     # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
 
     # Throttling
 
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.AnonRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'user': '100/hour',
-        'anon': '50/hour',
-    },
+    # 'DEFAULT_THROTTLE_CLASSES': [
+    #     'rest_framework.throttling.UserRateThrottle',
+    #     'rest_framework.throttling.AnonRateThrottle',
+    # ],
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'user': '100/hour',
+    #     'anon': '50/hour',
+    # },
     
 }
 
@@ -201,3 +214,4 @@ AUTH_USER_MODEL = 'user.CustomUser'
 STATIC_URL = 'static/'
 
 CART_SESSION_ID = 'cart'
+BOT_API = os.getenv('BOT_API')

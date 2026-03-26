@@ -7,11 +7,11 @@ from products.models import ProductVariant
 # Create your models here.
 class Order(models.Model):
     STATUS_CHOICES = [
-        ('новый', 'Новый'),
-        ('в_обработке', 'В обработке'),
-        ('отправлен', 'Отправлен'),
-        ('доставлен', 'Доставлен'),
-        ('отменён', 'Отменён'),
+        ('new', 'Новый'),
+        ('processing', 'В обработке'),
+        ('shipped', 'Отправлен'),
+        ('delivered', 'Доставлен'),
+        ('cancelled', 'Отменён'),
     ]
     user = models.ForeignKey(
         CustomUser,
@@ -40,7 +40,7 @@ class Order(models.Model):
         verbose_name='Номер телефона',
         validators=[phone_regex],
     )
-    address = models.TextField(max_length=500, verbose_name='Адрес доставки')
+    address = models.TextField(max_length=500, verbose_name='Адрес доставки',)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
