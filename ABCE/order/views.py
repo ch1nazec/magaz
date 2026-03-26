@@ -1,15 +1,17 @@
-from rest_framework import views, permissions, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import Q, F
+from django.core.cache import cache
+from others.decorators import clear_cache
 
 from .models import Order, OrderItem
-from products.models import Product, ProductVariant
-from .serializer import OrderSerializer, OrderItemSerializer
+from products.models import ProductVariant
+from .serializer import OrderSerializer
 
 from .permissions import IsAdminOrBot
 
@@ -59,8 +61,20 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['user__telegram_id', 'status', 'phone_number']
-    
 
+
+    def list(self, request, *args, **kwargs):
+        cache_key = f'order_list_{request.GET.urlencode()}'
+
+        cache_data = cache.get(cache_key)
+        if cache_data:
+            return Response(cache_data)
+        
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 300)
+        return response
+    
+    @clear_cache
     def create(self, request):
         with transaction.atomic():
             cart = Cart(request)
@@ -91,7 +105,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 else:
                     variant_id = variant_data
 
-                variant = ProductVariant.objects.select_related('product', 'color', 'size').get(id=variant_id)
+                variant = ProductVariant.objects.select_for_update().select_related('product', 'color', 'size').get(id=variant_id)
 
                 quantity = item['quantity']
                 price = variant.price
@@ -123,8 +137,21 @@ class OrderViewSet(viewsets.ModelViewSet):
 
             cart.clear()
 
+            cache.delete_pattern('order_list_*')
             serializer = OrderSerializer(order)
             return Response(serializer.data, status=201)
+    
+    @clear_cache
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+    
+    @clear_cache
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+    
+    @clear_cache
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
     
 
 @api_view(['GET'])
@@ -157,7 +184,9 @@ def cancel_order(request, order_id, order=None):
 def sent_order(request, order_id, order=None):
     order.status = 'shipped'
     order.save()
-    return Response({'message': 'Заказ отправлен!'}, status=status.HTTP_202_ACCEPTED)
+
+    cache.delete_pattern('order_list_*')
+    return Response({'message': 'Заказ отправлен!'}, status=status.HTTP_200_ACCEPTED)
 
 
 @api_view(['PATCH'])
@@ -165,7 +194,8 @@ def sent_order(request, order_id, order=None):
 @order_exists
 @order_cancel_check
 def confirm_order(request, order_id, order=None):
-    
     order.status = 'delivered'
     order.save()
+
+    cache.delete_pattern('order_list_*')
     return Response({'message': 'Заказ успешно доставлен!'}, status=status.HTTP_202_ACCEPTED)
