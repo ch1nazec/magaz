@@ -20,6 +20,9 @@ BACKEND_PORT = config('BACKEND_PORT')
 REDIS_HOST = config('REDIS_HOST')
 REDIS_PORT = config('REDIS_PORT')
 
+headers = {'X-Bot-Token': BOT_API}
+main_url_order = f'{BACKEND_URL}:{BACKEND_PORT}/api/order/'
+
 
 
 bot = Bot(token=BOT_API, default=DefaultBotProperties(parse_mode=ParseMode.HTML))

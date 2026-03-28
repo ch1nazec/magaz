@@ -3,9 +3,13 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiohttp import web, ClientSession
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from create_bot import bot, dp, BASE_URL, HOST, PORT, WEBHOOK_APP, ADMIN
-from handlers.main import main_router
+# from handlers.main import main_router
 from middleware.session_middleware import SessionMiddleware
+from handlers.orders import send_order_notification
 
+from admin_panel.handlers import admin_router
+from handlers.orders import router as orders_router
+from handlers.start import router as start_router
 
 async def set_commands():
     commands = [BotCommand(command='start', description='Старт')]
@@ -33,12 +37,16 @@ async def on_shutdown() -> None:
 
 
 def main():
-    dp.include_router(router=main_router)
+    dp.include_routers(orders_router, start_router, admin_router)
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
     # Создаём веб-приложение на aiohttp и настраиваем вебхук - закидываем туда диспетчера да бота
     app = web.Application()
+    app['bot'] = bot
+    
+    app.router.add_post('/send_order', send_order_notification)
+
     webhook_request_handler = SimpleRequestHandler(
         dispatcher=dp, bot=bot)
 

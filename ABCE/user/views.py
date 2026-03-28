@@ -8,6 +8,8 @@ from .models import CustomUser
 from .serializer import (UserSerializer, RegistartionUserSerializer,
                          LoginUserSerializer, PasswordChangeSerializer, UpdateUserSerializer)
 
+from others.decorators import auto_clear_cache, set_cache, auto_set_cache
+
 
 # Create your views here.
 class UserListAPI(generics.ListAPIView):
@@ -15,6 +17,15 @@ class UserListAPI(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAdminUser]
     filter_backends = [DjangoFilterBackend]
+
+
+@auto_clear_cache(pattern='user_*')
+@auto_set_cache(pattern='user_')
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAdminUser]
+    lookup_field = 'id'
 
 
 class RegisterView(generics.CreateAPIView):

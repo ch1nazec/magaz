@@ -22,11 +22,13 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
 
     class Meta:
         model = Order
         fields = [
-            'id', 'user', 'phone_number', 'status',
+            'id', 'user', 'first_name', 'last_name', 'phone_number', 'status',
             'comment', 'address', 'created_at', 'updated_at',
             'total_amount', 'items',
         ]

@@ -2,9 +2,8 @@ from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
 
 from aiogram import Router, F
 from aiogram.filters import Command
-from create_bot import BACKEND_URL, BACKEND_PORT
 from aiohttp.client import ClientSession
-from create_bot import BOT_API
+from aiohttp import web
 
 from kb.reply import orders_type
 from kb.inline import build_btn, DictAction
@@ -64,3 +63,24 @@ async def order_details(callback: CallbackQuery, callback_data: DictAction, sess
     
     await callback.message.answer(text=result_string, show_alert=False)
     await callback.answer()
+
+
+async def send_order_notification(request):
+    try:
+        data = await request.json()
+        bot = request.app['bot']
+
+        data_json = dict(
+            telegram_id=data.get('telegram_id'),
+            id=data.get('id'),
+            total_amount=data.get('total_amount'))
+
+        text = textwrap.dedent(f"""
+                    Заказ #{data_json.get('id')}
+                    Сумма: {data_json.get('total_amount')}
+                    """)
+        await bot.send_message(data_json.get('telegram_id'), text, parse_mode='Markdown', reply_markup=build_btn(data_json))
+
+        return web.Response(status=200)
+    except Exception as e:
+        return web.Response(status=500, text=str(e))

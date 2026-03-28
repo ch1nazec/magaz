@@ -2,13 +2,14 @@ from django.urls import path
 from .views import (
     UserListAPI, logout_view,
     RegisterView, TelegramLinkUserView,
-    LoginView,
+    LoginView, UserDetailView,
     ChangePasswordView
 )
 
 
 urlpatterns = [
     path('', UserListAPI.as_view(), name='user-list'),
+    path('detail/<int:id>/', UserDetailView.as_view(), name='user-detail'),
     path('register/', RegisterView.as_view(), name='user-register'),
     path('login/', LoginView.as_view(), name='user-login'),
     path('change-password/', ChangePasswordView.as_view(), name='user-change-password'),

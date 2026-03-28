@@ -14,8 +14,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from .filters import ProductVariantFilter
 
+from others.decorators import auto_clear_cache, auto_set_cache
+
+
 
 # Create your views here.
+@auto_clear_cache(pattern='product_list_*')
+@auto_set_cache(pattern='product_list_')
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -33,6 +38,9 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         return [permission() for permission in permission_classes]
 
+
+@auto_clear_cache(pattern='productvariant_list_*')
+@auto_set_cache(pattern='productvariant_list_')
 class ProductVariantViewSet(BaseAdminViewSet):
     serializer_class = ProductVariantSerializer
     queryset = ProductVariant.objects.all().select_related(
@@ -49,6 +57,8 @@ class ProductVariantViewSet(BaseAdminViewSet):
     ordering = ['product__name']
 
 
+@auto_clear_cache(pattern='category_list_*')
+@auto_set_cache(pattern='category_list_')
 class CategoryViewSet(BaseAdminViewSet):
     queryset = Category.objects.all()
 
@@ -115,22 +125,26 @@ class ImagesViewSet(BaseAdminViewSet):
         image.save()
         return Response({'status': 'Success!'})
     
-
+@auto_clear_cache(pattern='color_list_*')
+@auto_set_cache(pattern='color_list_', timeout=3600)
 class ColorViewSet(BaseAdminViewSet):
     serializer_class = ColorSerializer
     queryset = Color.objects.all()
 
-
+@auto_clear_cache(pattern='size_list_*')
+@auto_set_cache(pattern='size_list_', timeout=3600)
 class SizeViewSet(BaseAdminViewSet):
     serializer_class = SizeSerializer
     queryset = Size.objects.all()
 
-
+@auto_clear_cache(pattern='tag_list_*')
+@auto_set_cache(pattern='tag_list_', timeout=3600)
 class TagViewSet(BaseAdminViewSet):
     serializer_class = TagSerializer
     queryset = Tag.objects.all()
 
-
+@auto_clear_cache(pattern='tagtoproduct_list_*')
+@auto_set_cache(pattern='tagtoproduct_list_', timeout=3600)
 class TagToProductViewSet(BaseAdminViewSet):
     serializer_class = TagToProductSerializer
     queryset = TagToProduct.objects.all()

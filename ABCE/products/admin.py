@@ -30,7 +30,7 @@ class ProductVariantInline(admin.TabularInline):
     """Инлайн для размеров товара"""
     model = ProductVariant
     extra = 1
-    fields = ['size', 'price', 'quantity']
+    fields = ['id', 'size', 'price', 'quantity']
     autocomplete_fields = ['size']
 
 class ImageProductInline(admin.TabularInline):
@@ -120,7 +120,7 @@ class SizeAdmin(admin.ModelAdmin):
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
-    list_display = ['product', 'size', 'price', 'quantity']
+    list_display = ['id', 'product', 'size', 'price', 'quantity']
     list_filter = ['size']
     search_fields = ['product__name', 'size__name']
     autocomplete_fields = ['product', 'size']

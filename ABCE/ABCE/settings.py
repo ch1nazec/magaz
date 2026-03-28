@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+from django_redis import get_redis_connection
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 env_path = Path('.') / '.env'
@@ -60,6 +61,7 @@ OTHER_APPS = [
     'mptt',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'django_redis'
 ]
 
 INSTALLED_APPS = DJANGO_APP + APP + OTHER_APPS
@@ -98,15 +100,21 @@ WSGI_APPLICATION = 'ABCE.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 CACHES = {
-    # "default" is the alias.
-    "default": {
-        # Here, we're using the Redis cache backend.
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-
-        # A LOCATION parameter to specify the Redis server's address and port.
-        "LOCATION": "redis://127.0.0.1:6379",
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
     }
 }
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/1'
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/1'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+ROOT_URLCONF = 'ABCE.urls'
+WSGI_APPLICATION = 'ABCE.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -215,3 +223,5 @@ STATIC_URL = 'static/'
 
 CART_SESSION_ID = 'cart'
 BOT_API = os.getenv('BOT_API')
+BOT_API_URL = os.getenv('BOT_API_URL')
+REDIS_CLIENT = get_redis_connection('default')

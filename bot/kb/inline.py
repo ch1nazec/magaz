@@ -14,6 +14,9 @@ def link_start_button(tg_id: int) -> InlineKeyboardMarkup:
 
 
 def build_btn(data: list[dict]) -> InlineKeyboardMarkup:
+    if isinstance(data, dict):
+        data = [data]
+        
     builder = InlineKeyboardBuilder()
 
     for item in data:
