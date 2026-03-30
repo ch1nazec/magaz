@@ -1,4 +1,4 @@
-import logging
+import logging, asyncio
 from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiohttp import web, ClientSession
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
@@ -7,9 +7,8 @@ from create_bot import bot, dp, BASE_URL, HOST, PORT, WEBHOOK_APP, ADMIN
 from middleware.session_middleware import SessionMiddleware
 from handlers.orders import send_order_notification
 
-from admin_panel.handlers import admin_router
-from handlers.orders import router as orders_router
-from handlers.start import router as start_router
+from main_router import all_routers
+
 
 async def set_commands():
     commands = [BotCommand(command='start', description='Старт')]
@@ -20,6 +19,10 @@ async def on_startup():
     """Включить бота"""
 
     await set_commands()
+    await bot.delete_webhook(drop_pending_updates=True)
+
+    await asyncio.sleep(1)
+
     await bot.set_webhook(f"{BASE_URL}{WEBHOOK_APP}")
     await bot.send_message(chat_id=ADMIN, text='Бот запущен')
 
@@ -37,7 +40,8 @@ async def on_shutdown() -> None:
 
 
 def main():
-    dp.include_routers(orders_router, start_router, admin_router)
+    dp.include_routers(*all_routers)
+
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 

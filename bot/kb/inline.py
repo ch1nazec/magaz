@@ -2,6 +2,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
 
+from dataclasses import dataclass, field
+
 
 class DictAction(CallbackData, prefix='callback_order_'):
     action: str

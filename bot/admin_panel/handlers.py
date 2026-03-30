@@ -1,8 +1,8 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
-from .list_admin import ADMIN_LIST 
-from .kb.inline import admin_order_builder
+from .list_admin import ADMIN_LIST
+from admin_panel.kb.inline import admin_order_builder, ProductId
 
 from aiohttp import ClientSession
 
@@ -13,8 +13,8 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 def admin_order_check():
     buttons = [
-        [KeyboardButton(text='Активные заказы (адм).')],
-        [KeyboardButton(text='Закрытые заказы (адм).')],
+        [KeyboardButton(text='active_adm')],
+        [KeyboardButton(text='closed_adm')],
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
@@ -30,21 +30,26 @@ async def admin_start(message: Message, session: ClientSession):
         reply_markup=admin_order_check())
 
 
-@admin_router.message(F.text == 'Активные заказы (адм).')
+@admin_router.message(F.text.contains('_adm'))
 async def active_orders(message: Message, session: ClientSession):
     data_orders = await get_orders(mess=message.text, session=session)
+    text = ''
+    if message.text == 'active_adm':
+        text = 'Выберите один из заказов снизу'
+    elif message.text == 'closed_adm':
+        text = 'Выберите один из закрытых заказов снизу'
 
     if data_orders:
         await message.reply(
-            text="Выберите один из заказов снизу",
-            reply_markup=admin_order_builder(data_orders, message.text))
+            text=text,
+            reply_markup=admin_order_builder(data=data_orders, action=message.text))
 
 
-@admin_router.message(F.text == 'Закрытые заказы (адм).')
-async def active_orders(message: Message, session: ClientSession):
-    data_orders = await get_orders(mess=message.text, session=session)
+# @admin_router.message(F.text == 'Закрытые заказы адм')
+# async def closed_orders(message: Message, session: ClientSession):
+#     data_orders = await get_orders(mess=message.text, session=session)
 
-    if data_orders:
-        await message.reply(
-            text="Выберите один из закрытых заказов снизу",
-            reply_markup=admin_order_builder(data_orders, message.text))
+#     if data_orders:
+#         await message.reply(
+#             text="Выберите один из закрытых заказов снизу",
+#             reply_markup=admin_order_builder(data_orders, message.text))

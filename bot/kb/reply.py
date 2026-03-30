@@ -3,8 +3,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 def orders_type():
     buttons = [
-        [KeyboardButton(text='Активные заказы',)],
-        [KeyboardButton(text='Закрытые заказы',)],
+        [KeyboardButton(text='active_adm',)],
+        [KeyboardButton(text='closed_adm',)],
     ]
     
     return ReplyKeyboardMarkup(keyboard=buttons,
