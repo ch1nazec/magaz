@@ -1,4 +1,6 @@
 from rest_framework.response import Response
+from rest_framework.request import Request
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import views
@@ -8,7 +10,7 @@ from products.models import ProductVariant
 
 # Create your views here.
 class CartViewAPI(views.APIView):
-    def post(self, request):
+    def post(self, request: Request):
         with transaction.atomic():
             cart = Cart(request)
 
@@ -28,7 +30,7 @@ class CartViewAPI(views.APIView):
                 })
     
     
-    def get(self, request):
+    def get(self, request: Request):
         cart = Cart(request)
 
         return Response({
@@ -37,7 +39,7 @@ class CartViewAPI(views.APIView):
             'total_items': len(cart)
         })
     
-    def delete(self, request):
+    def delete(self, request: Request):
         with transaction.atomic():
             cart = Cart(request)
             cart.clear()

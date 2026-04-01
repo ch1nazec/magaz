@@ -1,15 +1,14 @@
 from rest_framework import status, viewsets
 from rest_framework.response import Response
+from rest_framework.request import Request
+
 from rest_framework.decorators import api_view
 from django.conf import settings
 
 from django_filters.rest_framework import DjangoFilterBackend
-from django_redis import get_redis_connection
-
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.core.cache import cache
-from others.decorators import clear_cache, auto_clear_cache, set_cache
+from others.decorators import auto_clear_cache
 
 from .models import Order, OrderItem
 from products.models import ProductVariant
@@ -22,12 +21,18 @@ from others.decorators import auto_set_cache
 
 from functools import wraps
 from others.delete_cache import delete_cache
+        
 
-
-def admin_check(func):
+def admin_bot_check(func):
     @wraps(func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_staff:
+    def wrapper(request: Request, *args, **kwargs):
+        from django.conf import settings
+
+        is_admin = request.user.is_staff
+        print(request.headers)
+        bot_api = request.headers.get('X-Bot-Token') == settings.BOT_API
+        
+        if not (is_admin or bot_api):
             return Response({'message': 'Только администраторы могут сделать это'},
                             status=status.HTTP_403_FORBIDDEN)
         return func(request, *args, **kwargs)
@@ -36,7 +41,7 @@ def admin_check(func):
 
 def order_cancel_check(func):
     @wraps(func)
-    def wrapper(request, *args, **kwargs):
+    def wrapper(request: Request, *args, **kwargs):
         order = kwargs.get('order')
         if order and order.status == 'отменён':
             return Response({'message': 'Заказ уже отменён!'}, status=status.HTTP_400_BAD_REQUEST)
@@ -46,7 +51,7 @@ def order_cancel_check(func):
 
 def order_exists(func):
     @wraps(func)
-    def wrapper(request, *args, **kwargs):
+    def wrapper(request: Request, *args, **kwargs):
         order_id = kwargs.get('order_id')
         if not order_id:
             return Response(
@@ -68,7 +73,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['user__telegram_id', 'status', 'phone_number']
 
-    def create(self, request):
+    def create(self, request: Request):
         with transaction.atomic():
             cart = Cart(request)
             user = request.user
@@ -137,14 +142,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 @api_view(['GET'])
 @order_exists
-def order_get(request, order_id, order=None):
+def order_get(request: Request, order_id: int, order: Order=None):
     return Response(OrderSerializer(order).data)
 
 
 @api_view(['PATCH'])
 @order_exists
 @order_cancel_check
-def cancel_order(request, order_id, order=None):
+def cancel_order(request: Request, order_id: int, order: Order=None) -> Response:
     with transaction.atomic():
         for item in order.items.all():
             if item.variant:
@@ -160,22 +165,25 @@ def cancel_order(request, order_id, order=None):
 
 
 @api_view(['PATCH'])
-@admin_check
+@admin_bot_check
 @order_exists
 @order_cancel_check
-def sent_order(request, order_id, order=None):
+def sent_order(request: Request, order_id: int, order: Order=None) -> Response:
+    if order.status == 'shipped':
+        return Response({'message': 'Заказ уже отправлен.'}, status=status.HTTP_400_BAD_REQUEST)
+
     order.status = 'shipped'
     order.save()
 
     delete_cache('order_list_*')
-    return Response({'message': 'Заказ отправлен!'}, status=status.HTTP_200_ACCEPTED)
+    return Response({'message': 'Заказ отправлен!'}, status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(['PATCH'])
-@admin_check
+@admin_bot_check
 @order_exists
 @order_cancel_check
-def confirm_order(request, order_id, order=None):
+def confirm_order(request: Request, order_id: int, order: Order=None) -> Response:
     order.status = 'delivered'
     order.save()
 

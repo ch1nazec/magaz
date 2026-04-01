@@ -1,5 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
+
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -33,7 +35,7 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegistartionUserSerializer
     permission_classes = [permissions.AllowAny]
     
-    def create(self, request, *args, **kwargs):
+    def create(self, request: Request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -53,7 +55,7 @@ class LoginView(generics.GenericAPIView):
     serializer_class = LoginUserSerializer
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: Request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -72,7 +74,7 @@ class ChangePasswordView(generics.UpdateAPIView):
     serializer_class = PasswordChangeSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request: Request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -87,7 +89,7 @@ class UpdateUserView(generics.UpdateAPIView):
     serializer_class = UpdateUserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request: Request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -98,7 +100,7 @@ class UpdateUserView(generics.UpdateAPIView):
 class TelegramLinkUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, tg_id):
+    def post(self, request: Request, tg_id):
         user = request.user
 
         if user.telegram_id == tg_id:
@@ -116,7 +118,7 @@ class TelegramLinkUserView(APIView):
 
 @api_view(['POST'])
 @permission_classes(permission_classes=[permissions.IsAuthenticated])
-def logout_view(request):
+def logout_view(request: Request):
     """Выход юзера"""
 
     try:

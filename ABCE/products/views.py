@@ -1,6 +1,8 @@
 from rest_framework import (viewsets,
                             permissions,)
+
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework import status
 from rest_framework.decorators import action
 from .models import Product, Category, ImageProduct, Color, Size, ProductVariant, Tag, TagToProduct
@@ -68,7 +70,7 @@ class CategoryViewSet(BaseAdminViewSet):
         return CategorySerializer
     
     @action(detail=False, methods=['get'])
-    def tree(self, request):
+    def tree(self, request: Request):
         categories = Category.objects.filter(parent__isnull=True)
         serializer = CategorySerializer(categories, many=True)
         return Response(serializer.data)

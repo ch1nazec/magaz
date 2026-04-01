@@ -1,6 +1,7 @@
 from django.conf import settings
+from ABCE.redis_client import redis_client
 
 
-def delete_cache(pattern):
-    for key in settings.REDIS_CLIENT.scan_iter(pattern):
-        settings.REDIS_CLIENT.delete(key)
+def delete_cache(pattern='user_*'):
+    for key in redis_client.scan_iter(pattern):
+        redis_client.delete(key)

@@ -24,8 +24,8 @@ def try_request(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[
 @try_request
 async def get_orders(mess: str, session: ClientSession, page: int = 1) -> list[dict]:
     filter_order = {
-        'active_adm': '?status=processing&status=shipped&page=3&status=new',
-        'closed_adm': '?status=cancelled&status=delivered',
+        'active_adm': '?status_in=processing,shipped,new',
+        'closed_adm': '?status__in=cancelled,delivered',
     }
     url = f'{main_url_order}{filter_order.get(mess)}&page={page}'
 
@@ -34,24 +34,27 @@ async def get_orders(mess: str, session: ClientSession, page: int = 1) -> list[d
 
 
 @try_request
-async def send_order(order_id: int, session: ClientSession):
-    url = f'{main_url}/sent/{order_id}/'
+async def send_order(order_id: int,
+                     session: ClientSession) -> dict[str]:
+    url = f'{main_url_order}sent/{order_id}/'
 
     async with session.patch(url, headers=headers) as response:
         return await response.json()
 
 
 @try_request
-async def cancel_order(order_id: int, session: ClientSession):
-    url = f'{main_url}/cancel/{order_id}/'
+async def cancel_order(order_id: int,
+                       session: ClientSession) -> dict[str]:
+    url = f'{main_url_order}cancel/{order_id}/'
 
     async with session.patch(url, headers=headers) as response:
         return await response.json()
 
 
 @try_request
-async def confirm_order(order_id: int, session: ClientSession):
-    url = f'{main_url}/cancel/{order_id}/'
+async def confirm_order(order_id: int,
+                        session: ClientSession) -> dict[str]:
+    url = f'{main_url_order}confirm/{order_id}/'
 
     async with session.patch(url, headers=headers) as response:
         return await response.json()

@@ -4,17 +4,11 @@ from aiogram.fsm.context import FSMContext
 
 from aiohttp import ClientSession
 
-from bot.FSM import AdminConfirm
+from FSM import AdminConfirm
 
 from .handlers import admin_router
 from .kb.inline import ProductOrder, confirm_kb
 from .order_requests import send_order, cancel_order, confirm_order
-
-
-@admin_router.callback_query()
-async def debug_all(callback: CallbackQuery):
-    print(f"🔔 ЛЮБОЙ CALLBACK: {callback.data}")
-    await callback.answer()
 
 
 @admin_router.callback_query(ProductOrder.filter(F.action.in_(['send_order', 'cancel_order', 'confirm_order'])))
@@ -36,13 +30,19 @@ async def confirm_yes(callback: CallbackQuery, state: FSMContext, session: Clien
     action_order = data.get('action_order')
     action = data.get('action')
 
-    await state.set_state(AdminConfirm.waiting)
+    # await state.set_state(AdminConfirm.waiting)
 
     if action == 'send_order':
-        await send_order(order_id, session)
-    elif action == 'cancel_order':
-        await cancel_order(order_id, session)
-    elif action == 'confirm_order':
-        await confirm_order(order_id, session)
+        message = await send_order(order_id, session)
+        print(message)
+        await callback.message.answer(text=message.get('message'))
     
-    # await callback.message.answer(r)
+    elif action == 'cancel_order':
+        message = await cancel_order(order_id, session)
+        await callback.message.answer(text=message.get('message'))
+
+    elif action == 'confirm_order':
+        message = await confirm_order(order_id, session)
+        await callback.message.answer(text=message.get('message'))
+    
+    await callback.answer()

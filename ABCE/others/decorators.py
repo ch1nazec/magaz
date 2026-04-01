@@ -1,20 +1,22 @@
 from functools import wraps
 from django.core.cache import cache
-from django_redis import get_redis_connection
+
+from rest_framework.request import Request
+
 from rest_framework.response import Response
-from django.conf import settings
+from ABCE.redis_client import redis_client
 
 
 def clear_cache(pattern='order_list_*'):
     def decorator(func):
         @wraps(func)
-        def wrapper(self, request, *args, **kwargs):
+        def wrapper(self, request: Request, *args, **kwargs):
             print('Начало вызова')
             result = func(self, request, *args, **kwargs)
             
             try:
-                for key in settings.REDIS_CLIENT.scan_iter(pattern):
-                    settings.REDIS_CLIENT.delete(key)
+                for key in redis_client.scan_iter(pattern):
+                    redis_client.delete(key)
             except AttributeError:
                 pass
             return result
@@ -33,19 +35,18 @@ def auto_clear_cache(pattern='order_list_*'):
     return decorator
 
 
-def set_cache(pattern='order_list_', timeout=300):
+def set_cache(pattern='user_', timeout=300):
     def decorator(func):
         @wraps(func)
-        def wrapper(self, request, *args, **kwargs):
-            query = request.GET.urlencode()
-            cache_key = f"{pattern}{query}" if query else pattern.rstrip('_')
-            cache_data = cache.get(cache_key)
-
-            if cache_data:
-                return Response(cache_data)
+        def wrapper(self, request: Request, *args, **kwargs):
+            cache_key = f"{pattern}{request.GET.urlencode()}"
+            
+            cached = cache.get(cache_key)
+            if cached:
+                return Response(cached)
             
             response = func(self, request, *args, **kwargs)
-            cache.set(key=cache_key, value=response.data, timeout=timeout)
+            cache.set(cache_key, response.data, timeout)
             return response
         return wrapper
     return decorator

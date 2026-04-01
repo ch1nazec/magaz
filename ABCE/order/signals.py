@@ -5,7 +5,9 @@ from .tasks import send_order_notification
 
 
 @receiver(post_save, sender=Order)
-def notify_bot(sender, instance, created, **kwargs):
+def notify_bot(sender, instance: Order, created, **kwargs):
+    if instance.status != 'new':
+        return
     if instance.user.telegram_id and instance.total_amount > 0:
         total_str = str(instance.total_amount)
         
