@@ -21,9 +21,13 @@ class MenuOrder:
     text: str
     keyboard: InlineKeyboardMarkup
 
-def menu_order(data: dict, action: str):
+def menu_order(data: dict, action: str) -> MenuOrder:
+    status = data.get('status')
+
     last_first_name = f"{data.get('last_name')} {data.get('first_name')}"
     order_id = data.get('id')
+
+    status_bool = True if status in ['Отменён', 'Доставлен'] else False
 
     text = textwrap.dedent(f"""
         Заказ #{order_id}
@@ -38,7 +42,9 @@ def menu_order(data: dict, action: str):
 
         Выберите действие
         """)
-    return MenuOrder(text, get_order_kb(order_id=order_id, action=action))
+    return MenuOrder(text, get_order_kb(order_id=order_id,
+                                        action=action,
+                                        closed=status_bool))
 
 
 @router_admin_call.callback_query(ProductOrder.filter(F.action.in_('cb_det_order')))
@@ -70,7 +76,6 @@ async def order_item_detail_call(callback: CallbackQuery, callback_data: Product
     data_order = await get_order(
         session=session,
         id=callback_data.id)
-    
     text = ""
     for item in data_order.get('items'):
         text_item = textwrap.dedent(
@@ -91,7 +96,7 @@ async def order_item_detail_call(callback: CallbackQuery, callback_data: Product
 async def order_back_to_menu_call(callback: CallbackQuery, callback_data: ProductOrder, session: ClientSession):
 
     order_data = await get_order(session=session, id=callback_data.id)
-    menu_kb = menu_order(order_data, action=callback_data.action)
+    menu_kb = menu_order(order_data, action=callback_data.action_order)
 
     await callback.message.edit_text(menu_kb.text, reply_markup=menu_kb.keyboard)
 

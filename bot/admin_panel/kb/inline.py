@@ -106,7 +106,7 @@ def admin_cancel_order(id: int, action: str, action_order: str) -> InlineKeyboar
         [InlineKeyboardButton(text='Подробнее', callback_data=product_data)]])
 
 
-def get_order_kb(order_id: int, action: str, closed: False) -> InlineKeyboardMarkup:
+def get_order_kb(order_id: int, action: str, closed: bool = False) -> InlineKeyboardMarkup:
     order_kb = OrderKeyboard(id=order_id, action_order=action)
 
     if not closed:
@@ -117,7 +117,7 @@ def get_order_kb(order_id: int, action: str, closed: False) -> InlineKeyboardMar
             .build())
     else:
         return (order_kb.detail_order()
-                .back())
+                .back().build())
 
 
 """Кнопки назад по разным целям"""
@@ -125,3 +125,9 @@ def back_to_detail_order(id: int, action_order: str) -> InlineKeyboardMarkup:
     """Функция с возвратом обратно в меню взаимодействия с заказом из кнопки подробнее"""
     product = ProductOrder(id=id, action='back_to_menu', action_order=action_order)
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Назад в меню', callback_data=product.pack())]])
+
+
+confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text='Уверен', callback_data='confirm')],
+    [InlineKeyboardButton(text='Не уверен', callback_data='deny')],
+])

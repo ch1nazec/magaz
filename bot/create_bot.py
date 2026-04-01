@@ -21,7 +21,8 @@ REDIS_HOST = config('REDIS_HOST')
 REDIS_PORT = config('REDIS_PORT')
 
 headers = {'X-Bot-Token': BOT_API}
-main_url_order = f'{BACKEND_URL}:{BACKEND_PORT}/api/order/'
+main_url = f'{BACKEND_URL}:{BACKEND_PORT}'
+main_url_order = f'{main_url}/api/order/'
 
 
 
