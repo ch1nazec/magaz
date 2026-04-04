@@ -228,3 +228,6 @@ STATIC_URL = 'static/'
 CART_SESSION_ID = 'cart'
 BOT_API = os.getenv('BOT_API')
 BOT_API_URL = os.getenv('BOT_API_URL')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT  = BASE_DIR / 'media'

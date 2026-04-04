@@ -16,11 +16,12 @@ def check_name(name, value):
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор категорий"""
     children = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = [
-            'id', 'name', 'slug', 'image',
+            'id', 'name', 'slug', 'image', 'image_url',
             'parent', 'children'
         ]
     
@@ -32,6 +33,13 @@ class CategorySerializer(serializers.ModelSerializer):
         if children:
             return CategorySerializer(obj.children.all(), many=True).data
         return []
+    
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and hasattr(obj.image, 'url') and request:
+            return request.build_absolute_uri(obj.image.url)
+        return
+    
 
 class BrandSerializer(serializers.ModelSerializer):
     """Сериализатор брендов"""
@@ -152,6 +160,11 @@ class CategoryListSerializer(serializers.ModelSerializer):
             'id', 'name',
             'image', 'slug'
         ]
+    
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
 
 
 class ProductListSerializer(serializers.ModelSerializer):

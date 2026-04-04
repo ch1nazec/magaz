@@ -63,16 +63,18 @@ class ProductVariantViewSet(BaseAdminViewSet):
 @auto_set_cache(pattern='category_list_')
 class CategoryViewSet(BaseAdminViewSet):
     queryset = Category.objects.all()
+    pagination_class = None
+    lookup_field = 'slug'
 
     def get_serializer_class(self):
         if self.action == 'list':
             return CategoryListSerializer
         return CategorySerializer
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], pagination_class=None)
     def tree(self, request: Request):
         categories = Category.objects.filter(parent__isnull=True)
-        serializer = CategorySerializer(categories, many=True)
+        serializer = CategorySerializer(categories, context={'request': request}, many=True)
         return Response(serializer.data)
 
 
