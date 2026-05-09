@@ -1,13 +1,16 @@
 <script setup>
-import TheWelcome from '../components/TheWelcome.vue'
 import Header from '../components/Header.vue';
 import CategoryHeader from '@/components/CategoryHeader.vue';
+import BrandHeader from '@/components/BrandHeader.vue';
+import ProductsHeader from '@/components/ProductsHeader.vue';
+import Footer from '@/components/Footer.vue';
 </script>
 
 <template>
-    <Header />
     <div class="main-window">
         <CategoryHeader />
+        <BrandHeader />
+        <ProductsHeader />
     </div>
 </template>
 

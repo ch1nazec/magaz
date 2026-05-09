@@ -4,7 +4,7 @@
       class="category-card"
       v-for="category in store.categoryTree.slice(0, 5)"
       :key="category.id">
-      <router-link :to="`category/${category.slug}/`">
+      <router-link :to="{ name: 'category', params: { 'categorySlug': category.slug}}">
         <img
         width="170" height="170"
           v-if="category.image"
@@ -41,7 +41,16 @@ export default {
 .categories {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
+}
+
+.category-card {
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: scale(1.02);
+  }
 }
 
 .category-card__name {

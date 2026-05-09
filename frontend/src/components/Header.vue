@@ -11,11 +11,11 @@
         </div>
 
         <div class="header__search">
-            <input type="text" placeholder="Поиск товаров...">
-            <div class="logo__loop">
-                <a href="/" class="loop__a">
+            <input type="text" placeholder="Поиск товаров..." v-model="ssearchData">
+            <div class="logo__loop" v-if="ssearchData">
+                <router-link class="loop__a" :to="{ name: 'search', params: {'searchData': ssearchData} }">
                     <img src="../assets/loop.png" width="20" height="20" alt="Поиск">
-                </a>
+                </router-link>
             </div>
         </div>
 
@@ -23,7 +23,9 @@
             <a href="/about" class="header__about">О нас</a>
 
             <div class="other__logo">
-                <img src="../assets/userheader.svg" alt="Аккаунт">
+                <router-link class="account-page" :to="{ name: 'login' }">
+                    <img src="../assets/userheader.svg" alt="Аккаунт">
+                </router-link>
                 <img src="../assets/favourite.svg" alt="Избранное">
             </div>
         </div>
@@ -80,10 +82,12 @@
     </div>
 
 </div>
+<div class="empty-place">
+</div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '@/services/api'
 
 const show = ref(false)
@@ -91,7 +95,12 @@ const show = ref(false)
 const categories = ref([])
 const categoriesTree = ref([])
 
+const ssearchData = ref('')
 const scrollContainer = ref(null)
+
+const checkSearch = computed(() => {
+    console.log(searchData.value)
+    ssearchData.value})
 
 const scroll = (dir) => {
     const el = scrollContainer.value
@@ -104,12 +113,12 @@ const scroll = (dir) => {
 }
 
 const getCategories = async () => {
-    const { data } = await api.get('/api/categories/')
+    const { data } = await api.get('categories/')
     categories.value = data
 }
 
 const getTreeCategories = async () => {
-    const { data } = await api.get('/api/categories/tree/')
+    const { data } = await api.get('categories/tree/')
     categoriesTree.value = data
 }
 
@@ -131,8 +140,14 @@ a {
     text-decoration: none;
     color: inherit;
 }
-
+.empty-place {
+    margin-top: 127px;
+}
 .header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100000;
     font-family: 'Inter', sans-serif;
     background: #fff;
     border-bottom: 1px solid #eee;

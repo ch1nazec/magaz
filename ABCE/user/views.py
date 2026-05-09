@@ -129,6 +129,12 @@ def logout_view(request: Request):
             token.blacklist()
             return Response({'message': 'Успешно вышли!'})
     except:
-        return Response(
-            {'error': 'Invalid token'}
-        )
+        return Response({'error': 'Invalid token'})
+    
+
+class ProfileView(generics.RetrieveAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user

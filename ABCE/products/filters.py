@@ -1,6 +1,18 @@
-from django_filters import NumberFilter, CharFilter, BooleanFilter
+from django_filters import NumberFilter, CharFilter, BooleanFilter, rest_framework
 import django_filters
-from products.models import ProductVariant
+from products.models import ProductVariant, Product, Brand
+
+
+class CharInFilter(rest_framework.BaseInFilter, rest_framework.CharFilter):
+    pass
+
+
+class BrandsFilter(rest_framework.FilterSet):
+    brand = CharInFilter(field_name='brand__slug', lookup_expr='in')
+
+    class Meta:
+        model = Product
+        fields = ['brand']
 
 
 class ProductVariantFilter(django_filters.FilterSet):

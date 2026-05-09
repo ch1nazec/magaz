@@ -10,15 +10,15 @@ export const useCategoryStore = defineStore("category", {
     actions: {
         async getCategories () {
         try {
-            const response = await api.get('/api/categories/')
+            const response = await api.get('categories/')
             this.dataCategory = response.data
         } catch (e) {console.log(e)}},
         
         async getCategoryTree () {
             try {
-                const response = await api.get('/api/categories/tree/')
+                const response = await api.get('categories/tree/')
                 this.categoryTree = response.data
             } catch (e) {console.log(e)}
-        }
+        },
     }
 })
