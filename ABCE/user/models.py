@@ -21,7 +21,7 @@ class CustomUser(AbstractUser):
         max_length=16,
         unique=True,
         verbose_name='Номер телефона',
-        validators=[phone_regex]
+        validators=[phone_regex], null=True, blank=True
     )
     address = models.TextField(
         max_length=500,

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { useAuthStore } from '@/stores/auth'
 
 
 const router = createRouter({
@@ -39,9 +40,25 @@ const router = createRouter({
       component: () => import('@/components/Product.vue')
     },
     {
+      path: '/register/',
+      name: 'register',
+      component: () => import('@/components/Register.vue')
+    },
+    {
+      path: '/profile/',
+      name: 'profile',
+      component: () => import('@/components/Profile.vue')
+    },
+    {
       path: '/login/',
       name: 'login',
-      component: () => import('@/components/Login.vue')
+      component: () => import('@/components/Login.vue'),
+      beforeEnter: (to) => {
+        const authStore = useAuthStore()
+        if (authStore.isAuthenticated) {
+          return { name: 'profile' } // Просто возвращаем объект роута для редиректа
+        }
+      }
     },
   ],
 })

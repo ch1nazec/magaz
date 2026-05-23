@@ -5,8 +5,8 @@ import authService from "@/services/auth";
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null)
-    const token = ref(localStorage.getItem('access_token') || null)
-    const refreshToken = ref(localStorage.getItem('refresh_token') || null)
+    const token = ref(localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || null)
+    const refreshToken = ref(localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token') || null)
     const loading = ref(false)
 
     const isAuthenticated = computed(() => !!token.value)
@@ -25,8 +25,16 @@ export const useAuthStore = defineStore('auth', () => {
                 refreshToken.value = response.data.refresh
                 user.value = response.data.user
 
-                localStorage.setItem('access_token', response.data.access)
-                localStorage.setItem('refresh_token', response.data.refresh)
+                console.log('Сохранение токена в storage:', { remember: credentials.remember, token: response.data.access })
+
+                if (credentials.remember) {
+                    localStorage.setItem('access_token', response.data.access)
+                    localStorage.setItem('refresh_token', response.data.refresh)}
+                else {
+                    sessionStorage.setItem('access_token', response.data.access)
+                    sessionStorage.setItem('refresh_token', response.data.refresh)}
+                
+                console.log('Загрузка токена из storage:', localStorage.getItem('access_token'))
                 
                 console.log('Login successfull! token: ', token.value)
                 return { success: true }}
@@ -54,8 +62,13 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = null
         refreshToken.value = null
 
+
         localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')}
+        localStorage.removeItem('refresh_token')
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('refresh_token')
+
+    }
 
     async function fetchProfile() {
         try {
@@ -85,7 +98,11 @@ export const useAuthStore = defineStore('auth', () => {
             const response = await authService.refreshToken(refreshToken.value)
             if (response.data?.access) {
                 token.value = response.data.access
-                localStorage.setItem('access_token', response.data.access)
+
+                if (localStorage.getItem('access_token')) {
+                    localStorage.setItem('access_token', response.data.access)}
+                else {
+                    sessionStorage.setItem('access_token', response.data.access)}
                 console.log('Token refreshed successfully')
                 return true
             }
@@ -120,4 +137,8 @@ export const useAuthStore = defineStore('auth', () => {
     refreshAccessToken,
     initialize
   }
+//   {
+//   persist: {
+//     paths: ['user', 'token', 'refreshToken']
+//   }}
 })

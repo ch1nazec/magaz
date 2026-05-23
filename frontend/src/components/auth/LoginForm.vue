@@ -119,9 +119,9 @@ export default {
         const authStore = useAuthStore()
         const router = useRouter()
 
-        if (authStore.token) {
-          router.push('/')
-        }
+        // if (authStore.token) {
+        //   router.push('/')
+        // }
 
         const formData = ref({
             email: '',
@@ -156,7 +156,8 @@ export default {
 
                 const result = await authStore.login({
                     email: formData.value.email,
-                    password: formData.value.password
+                    password: formData.value.password,
+                    remember: formData.value.remember
                 })
 
                 if (result.success) {

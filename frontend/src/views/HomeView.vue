@@ -1,9 +1,7 @@
 <script setup>
-import Header from '../components/Header.vue';
 import CategoryHeader from '@/components/CategoryHeader.vue';
 import BrandHeader from '@/components/BrandHeader.vue';
 import ProductsHeader from '@/components/ProductsHeader.vue';
-import Footer from '@/components/Footer.vue';
 </script>
 
 <template>
@@ -21,3 +19,4 @@ import Footer from '@/components/Footer.vue';
     padding: 0 100px;
 }
 </style>
+
