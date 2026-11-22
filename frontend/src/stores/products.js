@@ -157,6 +157,18 @@ export const useProducts = defineStore('product', {
             finally { this.loadingCategory = false }
         },
 
+        async sendToCart(data) {
+            if (this.loading) return
+            this.loading = true
+
+            try {
+                const response = await api.post(`cart/`, data)
+                console.log(response)    
+            } catch (error) {
+                console.error(error)}
+            finally {
+                this.loading = false}},
+
         async getProduct(slug, reset = false) {
             if (!slug) return;
 
@@ -171,6 +183,29 @@ export const useProducts = defineStore('product', {
             } catch (error) {
                 console.log('Ошибка при отправки API к продукту: ', error)}
             finally {this.loadingProduct = false}},
+        
+        async getCart() {
+            if (this.loading) return
+
+            this.loading = true
+            try {
+                const response = await api.get(`cart/`)
+                return response.data
+            } catch (error) {
+                console.error(error)}
+            finally {this.loading = false}
+        },
+
+        async postOrder() {
+            if (this.loading) return
+
+            this.loading = true
+            try {
+                const response = await api.post(`order/`)
+            } catch (error) {
+                console.error(error)}
+            finally {this.loading = false}
+        },
 
         setOrderBy(order) {
             this.orderBy = order

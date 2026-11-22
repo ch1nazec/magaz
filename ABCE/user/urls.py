@@ -3,7 +3,7 @@ from .views import (
     UserListAPI, logout_view,
     RegisterView, TelegramLinkUserView,
     LoginView, UserDetailView,
-    ChangePasswordView, ProfileView, UpdateUserView)
+    ChangePasswordView, ProfileView, UpdateUserView, ForgotPassword, reset_password)
 
 
 urlpatterns = [
@@ -13,7 +13,10 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='user-login'),
     path('change-password/', ChangePasswordView.as_view(), name='user-change-password'),
     path('logout/', logout_view, name='user-logout'),
-    path('telegram-link/<int:tg_id>', TelegramLinkUserView.as_view(), name='user-telegram'),
+    path('telegram-link/', TelegramLinkUserView.as_view(), name='user-telegram'),
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/update/', UpdateUserView.as_view(), name='profile-update'),
+
+    path('forget-password/', ForgotPassword.as_view(), name='forget-password'),
+    path('reset-password/', reset_password, name='forget-password'),
 ]

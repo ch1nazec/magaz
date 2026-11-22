@@ -60,6 +60,35 @@ const router = createRouter({
         }
       }
     },
+    {
+      path: '/bunch-telegram/',
+      name: 'bunch-telegram',
+      component: () => import('@/components/BunchTelegram.vue')
+    },
+    {
+      path: '/cart/',
+      name: 'cart',
+      component: () => import('@/views/CartView.vue'),
+      beforeEnter: (to) => {
+        const authStore = useAuthStore()
+        if (!authStore.isAuthenticated) { return { name: 'login' } }}
+    },
+    {
+      path: '/forget-password',
+      name: 'forget-password',
+      // route level code-splitting
+      // this generates a separate chunk (About.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import('@/components/ResetPassword/ForgetPassword.vue'),
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      // route level code-splitting
+      // this generates a separate chunk (About.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import('@/components/ResetPassword/ResetPassword.vue'),
+    },
   ],
 })
 

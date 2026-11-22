@@ -26,7 +26,10 @@
                 <router-link class="account-page" :to="{ name: 'login' }">
                     <img src="../assets/userheader.svg" alt="Аккаунт">
                 </router-link>
-                <img src="../assets/favourite.svg" alt="Избранное">
+                
+                <router-link class="cart-page" :to="{ name: 'cart' }">
+                    <img src="../assets/favourite.svg" alt="Корзина">
+                </router-link>
             </div>
         </div>
 
@@ -378,9 +381,9 @@ a {
 }
 
 
-@media (max-width: 900px) {
+/* @media (max-width: 900px) {
     .header__search {
         display: none;
     }
-}
+} */
 </style>

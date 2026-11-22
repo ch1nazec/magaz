@@ -1,0 +1,129 @@
+services:
+  backend:
+    image: abce-app
+    build:
+      context: ./ABCE
+      dockerfile: Dockerfile
+    # ports:
+    #   - 8010:8000
+    environment:
+      - DJANGO_DEBUG=True
+      - SECRET_KEY=django-insecure-*rtafj%_+$@6(dy0d20-asd=1+_yx8eim67#ny&dkkf-t!**44
+      - BOT_API=8669468702:AAH6xJDUDMf9KLJETO642gcjeW-VMr0MjNY
+      - BOT_API_URL=http://127.0.0.1:7777
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_HOST_USER=zaicev.casha10@gmail.com
+      - EMAIL_HOST_PASSWORD=smkowgvurbmemvkk
+      - EMAIL_USE_SSL=False
+      - EMAIL_USE_TLS=True
+      - NAME=ABCE
+      - USER=ABCEUser
+      - PASSWORD=Hny78jnkiOOO.k0
+    volumes:
+      - static_data:/app/ABCE/staticfiles
+      - ./ABCE/media:/app/ABCE/media
+      - ./data_backup.json:/app/data_backup.json
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-networks
+  telegrambot:
+    image: abce-bot
+    build:
+      context: './bot'
+      dockerfile: Dockerfile
+    
+    environment:
+      - ADMIN_ID=1045445214
+      - BOT_API=8669468702:AAH6xJDUDMf9KLJETO642gcjeW-VMr0MjNY
+      - BASE_URL=https://juvenile-inspired-theft-completion.trycloudflare.com
+      - HOST=0.0.0.0
+      - PORT=7777
+      - BACKEND_URL=http://127.0.0.1
+      - BACKEND_PORT=8000
+      - FRONTEND_URL=http://127.0.0.1
+      - FRONTEND_PORT=8080
+      - REDIS_HOST=localhost
+      - REDIS_PORT=6379
+    ports:
+      - "7777:7777"
+    depends_on:
+      - backend
+    networks:
+      - app-networks
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    networks:
+      - app-networks
+  db:
+    image: postgres:latest
+    restart: always
+    ports:
+      - 5433:5432
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ABCEUser
+      POSTGRES_PASSWORD: Hny78jnkiOOO.k0
+      POSTGRES_DB: ABCE
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - db-data:/var/lib/postgresql/
+    networks:
+      - app-networks
+  redis:
+    image: redis:latest
+    hostname: redis
+    ports:
+      - 6379:6379
+    networks:
+      - app-networks
+  celery:
+    build:
+      context: ./ABCE
+      dockerfile: Dockerfile
+    command: ["celery", "-A", "ABCE", "worker", "-l", "info"]
+    environment:
+        - SECRET_KEY=django-insecure-*rtafj%_+$@6(dy0d20-asd=1+_yx8eim67#ny&dkkf-t!**44
+    depends_on:
+      - db
+      - redis
+      - backend
+    networks:
+      - app-networks
+  
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8010:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_data:/app/ABCE/staticfiles
+      - ./ABCE/media:/app/ABCE/media:ro
+    depends_on:
+      - backend
+    networks:
+      - app-networks
+
+volumes:
+  db-data:
+  static_data:
+
+networks:
+  app-networks:
+    driver: bridge

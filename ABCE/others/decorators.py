@@ -11,7 +11,7 @@ def clear_cache(pattern='order_list_*'):
     def decorator(func):
         @wraps(func)
         def wrapper(self, request, *args, **kwargs):
-            print(f"🗑️ ВЫЗВАН МЕТОД: {func.__name__}, очищаем {pattern}")  # 👈 добавить
+            print(f"🗑️ ВЫЗВАН МЕТОД: {func.__name__}, очищаем {pattern}")
             result = func(self, request, *args, **kwargs)
             
             try:

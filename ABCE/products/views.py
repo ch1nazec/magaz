@@ -1,5 +1,5 @@
 from rest_framework import (viewsets,
-                            permissions, views, generics)
+                            permissions, generics)
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -47,7 +47,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 @auto_clear_cache(pattern='category_product_*')
-# @auto_set_cache(pattern='category_product_')
+@auto_set_cache(pattern='category_product_')
 class ProductForCategory(generics.ListAPIView):
     serializer_class = ProductSerializer
     
@@ -119,12 +119,10 @@ class ProductModelFindViewSet(BaseAdminViewSet):
     serializer_class = ProductVariantSerializer
     pagination_class = None
     def get_queryset(self):
-        # 1. Оптимизация и обязательная сортировка для стабильности
         queryset = ProductVariant.objects.select_related(
             'product__category', 'product__brand', 'product__model', 'color', 'size'
         ).order_by('id')
 
-        # 2. Получаем slug и очищаем его от возможных артефактов URL
         slug_group = self.request.query_params.get('model')
         if slug_group:
             slug_group = slug_group.strip('/')
@@ -137,17 +135,11 @@ class ProductModelFindViewSet(BaseAdminViewSet):
         if slug_group:
             slug_group = slug_group.strip('/')
 
-        # Получаем отфильтрованный queryset
         queryset = self.get_queryset()
         
         try:
-            # Пытаемся найти саму модель для метаданных
             model_obj = ProductModel.objects.get(slug=slug_group)
-            
-            # Сериализуем продукты
             serializer = self.get_serializer(queryset, many=True)
-            
-            # Формируем ПРАВИЛЬНЫЙ словарь данных
             custom_data = {
                 'model': model_obj.name,
                 'products': serializer.data

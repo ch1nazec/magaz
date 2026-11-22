@@ -1,12 +1,9 @@
 <template>
   <div class="main-window">
-    <div v-if="first_product" class="product-container">
-      <!-- Название товара сверху над всем -->
+    <div v-if="!isLoading" class="product-container">
       <h1 class="display-4 product-title">{{ first_product?.product.name }}</h1>
 
-      <!-- Две колонки: левая (карусель) + правая (размеры) -->
       <div class="product-content">
-        <!-- Левая колонка: карусель -->
         <div class="product-carousel">
           <div id="carouselExample" class="carousel slide">
             <div class="carousel-inner">
@@ -46,7 +43,6 @@
           </div>
         </div>
 
-        <!-- Правая колонка: размеры + кнопка -->
         <div class="product-sizes">
           <div class="sizes-grid">
             <div
@@ -61,7 +57,7 @@
           </div>
 
           <div class="button-price">
-            <button v-if="price" type="button" class="btn btn-secondary btn-lg">
+            <button v-if="price" type="button" class="btn btn-secondary btn-lg" @click="sendRequestToCart(price)">
               Купить за {{ price }} RUB
             </button>
           </div>
@@ -92,11 +88,26 @@ const productSlug = route.params.productSlug
 const checkSlug = computed(() => {
     return productSlug})
 
+const isLoading = ref(true)
+
+const sendRequestToCart = async ( price ) => {
+  const productIDs = products.value.filter(product => product.price === price)
+  const form = {
+    "id": productIDs[0].id,
+    "quantity": 1}
+
+  await store.sendToCart(form)
+}
 
 const chooseSize = (priceChoose) => {price.value = priceChoose}
 onMounted(async () => {
+  try {
     await nextTick()
-    await store.getProduct(checkSlug.value)})
+    await store.getProduct(checkSlug.value)
+  } catch (error) {
+    console.error(error)}
+  finally {
+    isLoading.value = false}})
 </script>
 
 

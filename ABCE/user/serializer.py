@@ -2,6 +2,11 @@ from .models import CustomUser
 from rest_framework import serializers, status
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import authenticate
+
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+
 import re
 
 
@@ -70,7 +75,7 @@ class LoginUserSerializer(serializers.Serializer):
 class UpdateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'address', 'telegram_id']
+        fields = ['first_name', 'last_name', 'address', 'telegram_id', 'phone_number', 'email']
 
     def update(self, instance, validated_data: dict):
         for attr, values in validated_data.items():
@@ -117,4 +122,35 @@ class SMSLoginSerializer(SMSRequestSerializer):
     def validate_code(self, attrs: str):
         if not attrs.isdigit():
             raise serializers.ValidationError({'error': 'Код должен состоять только из цифр.'})
+        return attrs
+
+
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.CharField(max_length=100)
+
+    def validate_email(self, value):
+        if not CustomUser.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email does not exist.")
+        return value
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.CharField(max_length=100)
+    otp_code = serializers.CharField(min_length=6, write_only=True)
+
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(min_length=8, write_only=True)
+
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"password": "Passwords don't match."})
+
+        try:
+            user = CustomUser.objects.get(email=attrs["email"])
+            validate_password(attrs['new_password'], user=user)
+        except serializers.ValidationError as e:
+            raise serializers.ValidationError({"password": e.messages})
         return attrs

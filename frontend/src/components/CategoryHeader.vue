@@ -42,7 +42,9 @@ export default {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: center;
+
+  gap: 20px;
 }
 
 .category-card {
@@ -63,4 +65,9 @@ a {
 }
 
 
+@media (max-width: 1200px) {
+  .category-card {
+    flex: 0 0 calc(33.333% - 14px)
+  }
+}
 </style>

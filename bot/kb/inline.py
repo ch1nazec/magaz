@@ -2,7 +2,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
 
-from dataclasses import dataclass, field
+from create_bot import tg_bunch
 
 
 class DictAction(CallbackData, prefix='callback_order_'):
@@ -11,7 +11,7 @@ class DictAction(CallbackData, prefix='callback_order_'):
 
 
 def link_start_button(tg_id: int) -> InlineKeyboardMarkup:
-    button = InlineKeyboardButton(text='Привязать аккаунт', url=f'http://127.0.0.1:8000/api/users/telegram-link/{tg_id}')
+    button = InlineKeyboardButton(text='Привязать аккаунт', url=f'{tg_bunch}{tg_id}')
     return InlineKeyboardMarkup(inline_keyboard=[[button]])
 
 

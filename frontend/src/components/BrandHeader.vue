@@ -22,16 +22,6 @@ const store = useBrandsStore()
 onMounted(() => {
     store.getBrands()
 })
-
-// export default {
-//     setup() {
-//         const store = useBrandsStore()
-//         onMounted(() => {
-//             store.getBrands()
-//         })
-//         return { store }
-//     }
-// }
 </script>
 
 
@@ -54,6 +44,8 @@ onMounted(() => {
     flex-wrap: wrap;
     align-items: center;
     transition: transform 0.3s ease;
+
+    gap: 20px;
 }
 
 .brands__header_main img {
@@ -79,5 +71,15 @@ onMounted(() => {
 
 .a__all__brands {
     margin: 20px 0px;
+}
+
+
+@media (max-width: 980px) {
+    .brands__header_main {
+        flex: 0 calc(25% - 14px)
+    }
+    .a__all__brands {
+        align-self: flex-end;
+    }
 }
 </style>

@@ -64,9 +64,9 @@
           <span class="ml-2 text-gray-600">Remember me</span>
         </label>
 
-        <a href="#" class="text-black hover:text-gray-700 font-medium">
+        <router-link class="text-black hover:text-gray-700 font-medium" :to="{ name: 'forget-password' }">
           Forgot password?
-        </a>
+        </router-link>
       </div>
 
       <!-- Error Message -->

@@ -1,13 +1,12 @@
 import logging, asyncio
+
+from main_router import all_routers
 from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiohttp import web, ClientSession
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from create_bot import bot, dp, BASE_URL, HOST, PORT, WEBHOOK_APP, ADMIN
-# from handlers.main import main_router
 from middleware.session_middleware import SessionMiddleware
 from handlers.orders import send_order_notification
-
-from main_router import all_routers
 
 
 async def set_commands():

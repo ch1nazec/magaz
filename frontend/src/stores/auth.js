@@ -4,15 +4,28 @@ import authService from "@/services/auth";
 
 
 export const useAuthStore = defineStore('auth', () => {
+
     const user = ref(null)
     const token = ref(localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || null)
     const refreshToken = ref(localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token') || null)
     const loading = ref(false)
 
+    const email = ref(localStorage.getItem('reset_email') || '')
+
     const isAuthenticated = computed(() => !!token.value)
     const userName = computed(() => {
         if (!user.value) return ''
         return `${user.value.first_name} ${user.value.last_name}`})
+
+
+    function setEmail (newEmail)  {
+        email.value = newEmail
+        localStorage.setItem('reset_email', newEmail)
+    }
+    function clearEmail() {
+        email.value = ''
+        localStorage.removeItem('reset_email')
+    }
 
     async function login(credentials) {
         try {
@@ -45,6 +58,19 @@ export const useAuthStore = defineStore('auth', () => {
         finally {loading.value = false}
     }
 
+    async function updateProfileData(profileData) {
+        try {
+            loading.value = true
+
+            const response = await authService.updateProfile(profileData)
+            user.value = response.data
+            
+            return response.data
+        } catch (error) {
+            throw error}
+        finally { loading.value = true }
+    }
+
     async function register(credentials) {
         try {
             loading.value = true
@@ -57,18 +83,17 @@ export const useAuthStore = defineStore('auth', () => {
         finally {loading.value = false}
     }
 
+    
     async function logout() {
         user.value = null
         token.value = null
         refreshToken.value = null
 
-
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         sessionStorage.removeItem('access_token')
-        sessionStorage.removeItem('refresh_token')
+        sessionStorage.removeItem('refresh_token')}
 
-    }
 
     async function fetchProfile() {
         try {
@@ -96,14 +121,13 @@ export const useAuthStore = defineStore('auth', () => {
             console.log('Refreshing access token...')
 
             const response = await authService.refreshToken(refreshToken.value)
-            if (response.data?.access) {
+            if (response.data?.actions) {
                 token.value = response.data.access
 
                 if (localStorage.getItem('access_token')) {
                     localStorage.setItem('access_token', response.data.access)}
                 else {
                     sessionStorage.setItem('access_token', response.data.access)}
-                console.log('Token refreshed successfully')
                 return true
             }
         } catch (error) {
@@ -124,6 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     refreshToken,
     loading,
+    email,
 
     // Getters
     isAuthenticated,
@@ -135,10 +160,9 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     fetchProfile,
     refreshAccessToken,
-    initialize
+    updateProfileData,
+    initialize,
+    setEmail,
+    clearEmail
   }
-//   {
-//   persist: {
-//     paths: ['user', 'token', 'refreshToken']
-//   }}
 })

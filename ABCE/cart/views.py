@@ -26,9 +26,7 @@ class CartViewAPI(views.APIView):
                     'items': list(cart),
                     'total_price': str(cart.get_total_price()),
                     'quantity': len(cart)
-                    }
-                })
-    
+                    }})
     
     def get(self, request: Request):
         cart = Cart(request)
@@ -36,8 +34,7 @@ class CartViewAPI(views.APIView):
         return Response({
             'items': list(cart),
             'total_price': str(cart.get_total_price()),
-            'total_items': len(cart)
-        })
+            'total_items': len(cart)})
     
     def delete(self, request: Request):
         with transaction.atomic():

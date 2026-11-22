@@ -29,7 +29,7 @@ if not SECRET_KEY:
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
-ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1', 'localhost', '192.168.1.158:8000', 'http://localhost:8080', 'http://127.0.0.1:8080']
 
 
 # Application definition
@@ -41,6 +41,8 @@ DJANGO_APP = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'django_extensions', 
 ]
 
 APP = [
@@ -74,7 +76,24 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173", 'http://127.0.0.1:5173']
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173", "https://localhost:8080", 'http://localhost:8080', "https://illustration-gardens-flex-certain.trycloudflare.com",]
+CORS_ALLOW_CREDENTIALS = True
+
+
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True  # ТЕПЕРЬ ОБЯЗАТЕЛЬНО TRUE!
+
+# То же самое для CSRF (если используете)
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+
+
+SESSION_COOKIE_AGE = 1209600 
+# Кука сессии не удаляется при закрытии браузера
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False 
+# Сохранять сессию при каждом запросе (обновляет время жизни)
+SESSION_SAVE_EVERY_REQUEST = True 
+
 
 ROOT_URLCONF = 'ABCE.urls'
 
@@ -102,15 +121,15 @@ WSGI_APPLICATION = 'ABCE.wsgi.application'
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": "redis://redis:6379/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
     }
 }
 
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/1'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/1'
+CELERY_BROKER_URL = 'redis://redis:6379/1'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/1'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
@@ -123,7 +142,7 @@ DATABASES = {
         'NAME': os.getenv('NAME'),
         'USER': os.getenv('USER'),
         'PASSWORD': os.getenv('PASSWORD'),
-        'HOST': os.getenv('HOST'),
+        'HOST': os.getenv('HOST') or 'db',
         'PORT': os.getenv('PORT'),
     }
 }
@@ -187,14 +206,15 @@ REST_FRAMEWORK = {
 
     # Throttling
 
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.AnonRateThrottle',
-    ],
-    # 'DEFAULT_THROTTLE_RATES': {
-    #     'user': '100/hour',
-    #     'anon': '50/hour',
-    # },
+    # 'DEFAULT_THROTTLE_CLASSES': [
+    #     'rest_framework.throttling.UserRateThrottle',
+    #     'rest_framework.throttling.AnonRateThrottle',
+    # ],
+    'DEFAULT_THROTTLE_RATES': {
+        'forgot_password': '25/hour',
+        'forgot_password_email': '25/hour',
+        'reset_password': '10/hour',
+    },
     
 }
 
@@ -219,3 +239,14 @@ BOT_API_URL = os.getenv('BOT_API_URL')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT  = BASE_DIR / 'media'
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").lower() in ("true", "1", "yes")

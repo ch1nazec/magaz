@@ -15,11 +15,6 @@
         :error="errors.email"
         :required="true"
       >
-        <!-- <template #icon>
-          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 7.89a1 1 0 001.415 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-        </template> -->
       </BaseInput>
 
       <!-- Username Field -->
@@ -31,11 +26,6 @@
         :error="errors.username"
         :required="true"
       >
-        <!-- <template #icon>
-          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        </template> -->
       </BaseInput>
 
       <!-- First Name Field -->
@@ -47,11 +37,6 @@
         :error="errors.first_name"
         :required="true"
       >
-        <!-- <template #icon>
-          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        </template> -->
       </BaseInput>
 
       <!-- Last Name Field -->
@@ -63,11 +48,6 @@
         :error="errors.last_name"
         :required="true"
       >
-        <!-- <template #icon>
-          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        </template> -->
       </BaseInput>
 
       <!-- Password Field -->
@@ -80,26 +60,6 @@
         :required="true"
         help-text="Password must be at least 8 characters long"
       >
-        <!-- <template #icon>
-          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4a2 2 0 002 2zM12 13a2 2 0 100-4 2 2 0 000 4z" />
-          </svg>
-        </template>
-        <template #right>
-          <button
-            type="button"
-            @click="showPassword = !showPassword"
-            class="text-gray-400 hover:text-black focus:outline-none"
-          >
-            <svg v-if="showPassword" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            <svg v-else class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-2.122-2.122L4.242 4.242" />
-            </svg>
-          </button>
-        </template> -->
       </BaseInput>
 
       <!-- Confirm Password Field -->
@@ -111,11 +71,6 @@
         :error="errors.password_confirm"
         :required="true"
       >
-        <!-- <template #icon>
-          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4a2 2 0 002 2zM12 13a2 2 0 100-4 2 2 0 000 4z" />
-          </svg>
-        </template> -->
         <template #right>
           <button
             type="button"
@@ -233,7 +188,7 @@ export default {
            formData.value.first_name &&
            formData.value.last_name &&
            formData.value.password &&
-           formData.value.password_confirm && // <- поле называется password_confirm, а не confirm_password
+           formData.value.password_confirm &&
            formData.value.agree_terms
 })
         

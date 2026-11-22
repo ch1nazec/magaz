@@ -1,10 +1,16 @@
+import logging
+
+from rest_framework.request import Request
+
 from decimal import Decimal
 from django.conf import settings
 from products.models import ProductVariant
 
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 class Cart:
-    def __init__(self, request) -> None:
+    def __init__(self, request: Request) -> None:
         self.session = request.session
         self.request = request
         cart = self.session.get(settings.CART_SESSION_ID)
@@ -45,9 +51,15 @@ class Cart:
     def __iter__(self):
         product_ids = self.cart.keys()
         variants = ProductVariant.objects.filter(id__in=product_ids).select_related('product', 'color').prefetch_related('product__images')
-        cart = self.cart.copy()
 
+        cart = self.cart.copy()
         for variant in variants:
+            first_image = variant.product.images.first()
+            if first_image:
+                image_url = self.request.build_absolute_uri(first_image.image.url)
+            else:
+                image_url = None
+
             cart[str(variant.id)]['variant'] = variant.id
             cart[str(variant.id)]['variant_data'] = {
             'id': variant.id,
@@ -66,7 +78,7 @@ class Cart:
                 'id': variant.size.id,
                 'name': variant.size.name
             },
-            "image": self.request.build_absolute_uri(variant.product.images.filter(color=variant.color).first())
+            "image": image_url
         }
         
         for item in cart.values():
