@@ -59,7 +59,8 @@ OTHER_APPS = [
     'mptt',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    'django_redis'
+    'django_redis',
+    'drf_spectacular',
 ]
 
 INSTALLED_APPS = DJANGO_APP + APP + OTHER_APPS
@@ -121,7 +122,7 @@ WSGI_APPLICATION = 'ABCE.wsgi.application'
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",
+        "LOCATION": "redis://127.0.0.1:6379/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -197,12 +198,12 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSIONING_CLASS': None,
 
     # Generic view behavior
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
 
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 
-    # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
 
     # Throttling
 
@@ -250,3 +251,7 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").lower() in ("true", "1", "yes")
+
+SPECTACULAR_SETTINGS = {
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+}

@@ -1,70 +1,47 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
-from django.utils.translation import gettext_lazy as _
-from .models import CustomUser
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
+from .models import CustomUser, OTPCode
 
 
 @admin.register(CustomUser)
-class CustomUserAdmin(UserAdmin):
-    """Админка для кастомной модели пользователя"""
-    
-    # Поля, отображаемые в списке пользователей
-    list_display = [
-        'username', 'phone_number', 'email', 'telegram_id',
-        'address', 'is_staff', 'is_active'
-    ]
-    
-    # Поля для фильтрации
-    list_filter = ['is_staff', 'is_active', 'is_superuser']
-    
-    # Поля для поиска
-    search_fields = ['username', 'email', 'phone_number']
-    
-    # Поля для редактирования в списке
-    list_editable = ['phone_number', 'address']
-    
-    # Поля, которые можно читать, но не редактировать
-    readonly_fields = ['last_login', 'date_joined']
-    
-    # Поля для формы добавления пользователя
+class CustomUserAdmin(BaseUserAdmin):
+    model = CustomUser
+    ordering = ("-created_at",)
+    list_display = ("id", "email", "username", "phone_number",
+                    "first_name", "last_name", "is_active",
+                    "is_staff", "created_at")
+    list_filter = ("is_active", "is_staff", "is_superuser", "created_at")
+    search_fields = ("email", "username", "phone_number",
+                     "first_name", "last_name", "telegram_id")
+    readonly_fields = ("created_at", "updated_at", "last_login", "date_joined")
+
+    fieldsets = (
+        (None, {"fields": ("email", "password")}),
+        ("Личные данные", {"fields": ("username", "first_name", "last_name",
+                                      "phone_number", "address", "telegram_id")}),
+        ("Права", {"fields": ("is_active", "is_staff", "is_superuser",
+                              "groups", "user_permissions")}),
+        ("OTP", {"fields": ("otp_hash", "otp_created_at", "otp_attempts"),
+                 "classes": ("collapse",)}),
+        ("Даты", {"fields": ("last_login", "date_joined",
+                             "created_at", "updated_at")}),
+    )
+
     add_fieldsets = (
         (None, {
-            'classes': ('wide',),
-            'fields': (
-                'username', 'email', 'phone_number', 'address',
-                'password1', 'password2',
-            ),
+            "classes": ("wide",),
+            "fields": ("email", "username", "phone_number",
+                       "first_name", "password1", "password2",
+                       "is_active", "is_staff"),
         }),
     )
-    
-    # Поля для формы редактирования
-    fieldsets = (
-        (None, {'fields': ('username', 'password')}),
-        (_('Personal info'), {
-            'fields': (
-                'first_name', 'last_name', 'email',
-                'phone_number', 'address', 'telegram_id'
-            )
-        }),
-        (_('Permissions'), {
-            'fields': (
-                'is_active', 'is_staff', 'is_superuser',
-                'groups', 'user_permissions'
-            ),
-        }),
-        (_('Important dates'), {
-            'fields': ('last_login', 'date_joined')
-        }),
-    )
-    
-    # Поля, используемые при создании пользователя
-    def get_fieldsets(self, request, obj=None):
-        if not obj:
-            return self.add_fieldsets
-        return super().get_fieldsets(request, obj)
-    
-    def save_model(self, request, obj, form, change):
-        """Хэширование пароля при сохранении"""
-        if not change:  # Новый пользователь
-            obj.set_password(obj.password)
-        super().save_model(request, obj, form, change)
+
+
+@admin.register(OTPCode)
+class OTPCodeAdmin(admin.ModelAdmin):
+    list_display = ("id", "phone", "code", "created_at", "is_used")
+    list_filter = ("is_used", "created_at")
+    search_fields = ("phone", "code")
+    readonly_fields = ("created_at",)
+    date_hierarchy = "created_at"

@@ -25,7 +25,7 @@ class CustomUser(AbstractUser):
         message="Номер должен быть в формате: +7 (999) 123-45-67 или 89991234567"
     )
     phone_number = models.CharField(
-        max_length=16,
+        max_length=25,
         unique=True,
         verbose_name='Номер телефона',
         validators=[phone_regex], null=True, blank=True
@@ -52,21 +52,23 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username or self.phone_number or self.email or f"User {self.id}"
 
-    def generate_otp(self):
-        code = f'{secrets.randbelow(1_000_000):06d}'
+    def generate_otp(self) -> str:
+        code = f"{secrets.randbelow(1_000_000):06d}"
         self.otp_hash = make_password(code)
         self.otp_created_at = timezone.now()
-
         self.otp_attempts = 0
-        self.save(update_fields=['otp_hash', 'otp_created_at', 'otp_attempts'])
-        print(code)
+        self.save(update_fields=["otp_hash", "otp_created_at", "otp_attempts"])
         return code
 
     def verify_otp(self, code: str) -> bool:
-        if not self.otp_hash or not self.otp_created_at:
+        if not code or not self.otp_hash or not self.otp_created_at:
             return False
+
         if timezone.now() - self.otp_created_at > self.OTP_TTL:
+            self.clear_otp()
+            self.save(update_fields=["otp_hash", "otp_created_at", "otp_attempts"])
             return False
+
         if self.otp_attempts >= self.MAX_ATTEMPTS:
             return False
 
@@ -74,7 +76,11 @@ class CustomUser(AbstractUser):
             return True
 
         self.otp_attempts += 1
-        self.save(update_fields=['otp_attempts'])
+        if self.otp_attempts >= self.MAX_ATTEMPTS:
+            self.clear_otp()
+            self.save(update_fields=["otp_hash", "otp_created_at", "otp_attempts"])
+        else:
+            self.save(update_fields=["otp_attempts"])
         return False
 
     def clear_otp(self):

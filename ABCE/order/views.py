@@ -1,42 +1,54 @@
+import secrets
+
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.request import Request
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import api_view, action, permission_classes
 
-from rest_framework.permissions import AllowAny
-
-from rest_framework.decorators import api_view
 from django.conf import settings
-
-from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from others.decorators import auto_clear_cache
-
-from .models import Order, OrderItem
-from products.models import ProductVariant
-from .serializer import OrderSerializer
-
-from .permissions import IsAdminOrBot
-
-from cart.cart import Cart
-from others.decorators import auto_set_cache
+from django.db.models import F
+from django.core.exceptions import ValidationError
+from django_filters.rest_framework import DjangoFilterBackend
 
 from functools import wraps
+
+from .models import Order, OrderItem
+from .serializer import OrderSerializer, CreateOrderSerializer
+from .permissions import IsAdminOrBot
+
+from cart.models import Cart, CartItem
+from django.core.cache import cache
+from products.models import Stock
+from rest_framework import mixins
+
+from others.decorators import auto_clear_cache, auto_set_cache
 from others.delete_cache import delete_cache
-        
+
+
+def invalidate_order_cache(user_id: int):
+    cache.delete(f"order:user:{user_id}")
+
+#Декораторы
 
 def admin_bot_check(func):
     @wraps(func)
     def wrapper(request: Request, *args, **kwargs):
-        from django.conf import settings
-
-        is_admin = request.user.is_staff
-        print(request.headers)
-        bot_api = request.headers.get('X-Bot-Token') == settings.BOT_API
+        is_admin = bool(request.user and request.user.is_authenticated and request.user.is_staff)
         
-        if not (is_admin or bot_api):
-            return Response({'message': 'Только администраторы могут сделать это'},
-                            status=status.HTTP_403_FORBIDDEN)
+        incoming_token = request.headers.get("X-Bot-Token", "")
+        expected_token = getattr(settings, "BOT_API", "") or ""
+        
+        # Сравниваем безопасно и только если токен реально задан в настройках
+        is_bot = bool(expected_token) and secrets.compare_digest(incoming_token, expected_token)
+
+        if not (is_admin or is_bot):
+            return Response(
+                {"message": "Только администраторы могут сделать это"},
+                status=status.HTTP_403_FORBIDDEN
+            )
         return func(request, *args, **kwargs)
     return wrapper
 
@@ -44,9 +56,12 @@ def admin_bot_check(func):
 def order_cancel_check(func):
     @wraps(func)
     def wrapper(request: Request, *args, **kwargs):
-        order = kwargs.get('order')
-        if order and order.status == 'отменён':
-            return Response({'message': 'Заказ уже отменён!'}, status=status.HTTP_400_BAD_REQUEST)
+        order = kwargs.get("order")
+        if order and order.status == "cancelled":
+            return Response(
+                {"message": "Заказ уже отменён!"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return func(request, *args, **kwargs)
     return wrapper
 
@@ -54,140 +69,240 @@ def order_cancel_check(func):
 def order_exists(func):
     @wraps(func)
     def wrapper(request: Request, *args, **kwargs):
-        order_id = kwargs.get('order_id')
+        order_id = kwargs.get("order_id")
         if not order_id:
             return Response(
-                {'message': 'Заказ не указан',},
-                status=status.HTTP_400_BAD_REQUEST)
+                {"message": "Заказ не указан"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         order = get_object_or_404(Order, pk=order_id)
-        kwargs['order'] = order
+        kwargs["order"] = order
         return func(request, *args, **kwargs)
     return wrapper
 
 
-# Create your views here.
+# ====================== ViewSet ======================
+
 @auto_clear_cache()
-@auto_set_cache(pattern='user_')
-class OrderViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
-    queryset = Order.objects.all()
+@auto_set_cache(pattern="user_")
+class OrderViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
     serializer_class = OrderSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['user__telegram_id', 'status', 'phone_number']
+    filterset_fields = ["status", "phone_number"]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Order.objects.prefetch_related("items").all()
+        
+        data = Order.objects.filter(user=user).prefetch_related("items")
+        return data
+
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+
+        if user.is_staff or request.query_params:
+            return super().list(request, *args, **kwargs)
+
+        cache_key = f'order:user:{user.id}'
+        data = cache.get(cache_key)
+
+        if data is not None:
+            return Response(data)
+
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+
+        cache.set(cache_key, data, timeout=60 * 5)
+        return Response(data)
+
 
     def create(self, request: Request):
-        with transaction.atomic():
-            cart = Cart(request)
-            user = request.user
+        """
+        Создание заказа из корзины (БД-корзина).
+        POST /api/orders/
+        {
+            "phone_number": "+79991234567",
+            "address": "Уссурийск, ...",
+            "comment": "..."
+        }
+        """
+        serializer = CreateOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-            if not cart:
-                return Response(
-                    {'error': 'Корзина пуста'},
-                    status=status.HTTP_400_BAD_REQUEST
+        user = request.user
+        phone = serializer.validated_data["phone_number"]
+        address = serializer.validated_data["address"]
+        comment = serializer.validated_data.get("comment", "")
+
+        try:
+            with transaction.atomic():
+                cart = (
+                    Cart.objects
+                    .select_related("user")
+                    .prefetch_related("items__product", "items__warehouse")
+                    .get(user=user)
                 )
 
-            order = Order.objects.create(
-                user=user,
-                phone_number=user.phone_number,
-                address=user.address,
-                comment=request.data.get('comment', ''),
-                total_amount=0,
-                status='new',
-            )
-
-            total_amount = 0
-
-            for item in cart:
-                variant_data = item['variant']
-
-                if isinstance(variant_data, dict):
-                    variant_id = variant_data.get('id')
-                else:
-                    variant_id = variant_data
-
-                variant = ProductVariant.objects.select_related('product', 'color', 'size').get(id=variant_id)
-
-                quantity = item['quantity']
-                price = variant.price
-
-                if variant.quantity < quantity:
-                    transaction.set_rollback(True)
+                items = list(cart.items.select_related("product", "warehouse"))
+                if not items:
                     return Response(
-                        {'error': f'Недостаточно товара: {variant.product.name}'},
-                        status=400
+                        {"error": "Корзина пуста"},
+                        status=status.HTTP_400_BAD_REQUEST
                     )
-                
-                variant.quantity -= quantity
-                variant.save()
 
-                OrderItem.objects.create(
-                    order=order,
-                    variant=variant,
-                    quantity=quantity,
-                    price=price,
-                    product=variant.product.name,
-                    color=variant.color.color if variant.color else '',
-                    size=variant.size.name if variant.size else '',
+                total_amount = 0
+                order_items_data = []
+
+                # 1. Атомарно списываем остатки
+                for item in items:
+                    updated = (
+                        Stock.objects
+                        .filter(
+                            product=item.product,
+                            warehouse=item.warehouse,
+                            quantity__gte=item.quantity
+                        )
+                        .update(quantity=F("quantity") - item.quantity)
+                    )
+
+                    if updated == 0:
+                        # Откатываем всю транзакцию
+                        raise ValidationError(
+                            f"Недостаточно товара «{item.product.article}» "
+                            f"на складе {item.warehouse.city}"
+                        )
+
+                    total_amount += item.price * item.quantity
+                    order_items_data.append(item)
+
+                # 2. Создаём заказ
+                order = Order.objects.create(
+                    user=user,
+                    phone_number=phone,
+                    address=address,
+                    comment=comment,
+                    total_amount=total_amount,
+                    warehouse=order_items_data[0].warehouse,
+                    status="new",
                 )
 
-                total_amount += price * quantity
+                # 3. Создаём позиции (снимок данных)
+                OrderItem.objects.bulk_create([
+                    OrderItem(
+                        order=order,
+                        product=item.product,
+                        warehouse=item.warehouse,
+                        article=item.product.article,
+                        product_name=item.product.name,
+                        warehouse_name=f"{item.warehouse.name} ({item.warehouse.city})",
+                        price=item.price,
+                        quantity=item.quantity,
+                    )
+                    for item in order_items_data
+                ])
 
-            order.total_amount = total_amount
-            order.save()
+                # 4. Очищаем корзину
+                cart.items.all().delete()
 
-            cart.clear()
+        except Cart.DoesNotExist:
+            return Response(
+                {"error": "Корзина не найдена"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except ValidationError as e:
+            return Response(
+                {"error": str(e.message) if hasattr(e, "message") else str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        invalidate_order_cache(user.id)
+        # delete_cache("order_list_*")
+        
+        return Response(
+            OrderSerializer(order, context={"request": request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
-            delete_cache('order_list_*')
-            serializer = OrderSerializer(order)
-            return Response(serializer.data, status=201)
-    
 
-@api_view(['GET'])
+# ====================== Дополнительные эндпоинты ======================
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrBot])
 @order_exists
-def order_get(request: Request, order_id: int, order: Order=None):
+def order_get(request: Request, order_id: int, order: Order = None):
     return Response(OrderSerializer(order).data)
 
 
-@api_view(['PATCH'])
+@api_view(["PATCH"])
+@permission_classes([IsAdminOrBot])
 @order_exists
 @order_cancel_check
-def cancel_order(request: Request, order_id: int, order: Order=None) -> Response:
+def cancel_order(request: Request, order_id: int, order: Order = None) -> Response:
+    """
+    Отмена заказа + возврат товара на склад
+    """
     with transaction.atomic():
-        for item in order.items.all():
-            if item.variant:
-                item.variant.quantity += item.quantity
-                item.variant.save()
+        order = get_object_or_404(Order.objects.select_for_update(), pk=order_id)
+        if order.status == "cancelled":
+            return Response(
+                {"message": "Заказ уже отменён!"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        order.status = 'cancelled'
-        order.save()
+        
+        for item in order.items.select_related("product", "warehouse"):
+            if item.product and item.warehouse:
+                Stock.objects.filter(
+                    product=item.product,
+                    warehouse=item.warehouse
+                ).update(quantity=F("quantity") + item.quantity)
 
-        order_item = order.items.all()
-        delete_cache('order_list_*')
-        return Response({'message': f'Успешно отменён заказ #{order.pk}!'})
+        order.status = "cancelled"
+        order.save(update_fields=["status"])
 
 
-@api_view(['PATCH'])
-@admin_bot_check
+    if order.user_id:
+        invalidate_order_cache(order.user_id)
+    # delete_cache("order_list_*")
+    return Response({"message": f"Успешно отменён заказ #{order.pk}!"})
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAdminOrBot])
 @order_exists
 @order_cancel_check
-def sent_order(request: Request, order_id: int, order: Order=None) -> Response:
-    if order.status == 'shipped':
-        return Response({'message': 'Заказ уже отправлен.'}, status=status.HTTP_400_BAD_REQUEST)
+def sent_order(request: Request, order_id: int, order: Order = None) -> Response:
+    if order.status == "shipped":
+        return Response(
+            {"message": "Заказ уже отправлен."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-    order.status = 'shipped'
-    order.save()
+    order.status = "shipped"
+    order.save(update_fields=["status"])
 
-    delete_cache('order_list_*')
-    return Response({'message': 'Заказ отправлен!'}, status=status.HTTP_202_ACCEPTED)
+    # delete_cache("order_list_*")
+    if order.user_id:
+        invalidate_order_cache(order.user_id)
+    return Response({"message": "Заказ отправлен!"}, status=status.HTTP_202_ACCEPTED)
 
 
-@api_view(['PATCH'])
-@admin_bot_check
+@api_view(["PATCH"])
+@permission_classes([IsAdminOrBot])
 @order_exists
 @order_cancel_check
-def confirm_order(request: Request, order_id: int, order: Order=None) -> Response:
-    order.status = 'delivered'
-    order.save()
+def confirm_order(request: Request, order_id: int, order: Order = None) -> Response:
+    if order.status == 'delivered':
+        return Response({'message': 'Заказ уже доставлен.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    delete_cache('order_list_*')
-    return Response({'message': 'Заказ успешно доставлен!'}, status=status.HTTP_202_ACCEPTED)
+    order.status = "delivered"
+    order.save(update_fields=["status"])
+
+    # delete_cache("order_list_*")
+    if order.user_id:
+        invalidate_order_cache(order.user_id)
+    return Response({"message": "Заказ успешно доставлен!"}, status=status.HTTP_202_ACCEPTED)

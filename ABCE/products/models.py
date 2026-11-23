@@ -1,30 +1,30 @@
 from django.db import models
 from django.utils.text import slugify
+from django.core.validators import RegexValidator
 from mptt.models import MPTTModel, TreeForeignKey
 
 
-# Create your models here.
+# 1. Категории (дерево)
 class Category(MPTTModel):
-    """Категории товаров со вложенностью"""
-
-    name = models.CharField(max_length=100, verbose_name='Название категории')
-    slug = models.SlugField(max_length=100, unique=True)
-    image = models.ImageField(upload_to='categories/', verbose_name='Изображение категории', blank=True, null=True)
+    """Каталог товаров (меню)"""
+    name = models.CharField("Название", max_length=150)
+    slug = models.SlugField(max_length=150, unique=True)
+    image = models.ImageField("Изображение", upload_to="categories/", blank=True, null=True)
     parent = TreeForeignKey(
-        'self',
+        "self",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='children'
+        related_name="children",
+        verbose_name="Родительская категория"
     )
 
     class MPTTMeta:
-        order_insertion_by = ['name']
+        order_insertion_by = ["name"]
 
     class Meta:
-        ordering = ['name']
-        verbose_name = 'Категория'
-        verbose_name_plural = 'Категории'
+        verbose_name = "Категория"
+        verbose_name_plural = "Категории"
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -35,23 +35,17 @@ class Category(MPTTModel):
         return self.name
 
 
+# 2. Бренды запчастей
 class Brand(models.Model):
-    """Бренд производитель (Nike, Adidas...)"""
-    name = models.CharField(max_length=100, blank=False, verbose_name='Название бренда')
-    slug = models.SlugField(max_length=100, blank=True, unique=True)
-    logo = models.ImageField(
-        upload_to='brands/',
-        verbose_name='Логотип бренда',
-        blank=True,
-        null=True,
-    )
+    """Производители запчастей"""
+    name = models.CharField("Название", max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    logo = models.ImageField("Логотип", upload_to="brands/", blank=True, null=True)
 
     class Meta:
-        ordering = ['name']
-        verbose_name = 'Бренд'
-        verbose_name_plural = 'Бренды'
-
-        indexes = [models.Index(fields=['name'])]
+        verbose_name = "Бренд"
+        verbose_name_plural = "Бренды"
+        ordering = ["name"]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -60,236 +54,245 @@ class Brand(models.Model):
 
     def __str__(self):
         return self.name
-    
 
-class ProductModel(models.Model):
-    """Модели брендов (Air Max, Ja Morant)"""
-    name = models.CharField(max_length=100, blank=False, verbose_name='Название модели')
-    slug = models.SlugField(max_length=100, blank=False, unique=True)
-    brand = models.ForeignKey(
-        Brand,
-        on_delete=models.CASCADE,
-        related_name='models',
-        verbose_name='Бренд',
-    )
-    description = models.TextField(
-        max_length=1000,
-        verbose_name='Описание модели',
-        blank=True,
-    )
+
+# 3. Автомобили (иерархия)
+class VehicleMake(models.Model):
+    """Марка: Toyota, BMW, Hyundai..."""
+    name = models.CharField("Марка", max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    logo = models.ImageField("Логотип", upload_to="makes/", blank=True, null=True)
 
     class Meta:
-        ordering = ['brand', 'name']
-        unique_together = ['brand', 'name']
-        verbose_name = 'Модель'
-        verbose_name_plural = 'Модели'
-
-        indexes = [
-            models.Index(fields=['name', 'brand']),
-            models.Index(fields=['brand']),
-            ]
+        verbose_name = "Марка автомобиля"
+        verbose_name_plural = "Марки автомобилей"
+        ordering = ["name"]
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(f'{self.brand.name}-{self.name}')
-            self.slug = base_slug
+            self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'{self.brand.name} {self.name}'
+        return self.name
+
+class VehicleModel(models.Model):
+    """Модель: Camry, X5, Tucson..."""
+    make = models.ForeignKey(VehicleMake, on_delete=models.CASCADE, related_name="models")
+    name = models.CharField("Модель", max_length=100)
+    slug = models.SlugField(max_length=150, blank=True)
+
+    class Meta:
+        verbose_name = "Модель автомобиля"
+        verbose_name_plural = "Модели автомобилей"
+        unique_together = ["make", "name"]
+        ordering = ["make__name", "name"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(f"{self.make.name}-{self.name}")
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.make.name} {self.name}"
+
+class VehicleGeneration(models.Model):
+    """Поколение: XV70 (2017-2024), F15 и т.д."""
+    model = models.ForeignKey(VehicleModel, on_delete=models.CASCADE, related_name="generations")
+    name = models.CharField("Название поколения", max_length=100, blank=True)
+    year_from = models.PositiveSmallIntegerField("Год начала")
+    year_to = models.PositiveSmallIntegerField("Год окончания", null=True, blank=True)
+    body = models.CharField("Кузов", max_length=50, blank=True)  # sedan, SUV...
+
+    class Meta:
+        verbose_name = "Поколение"
+        verbose_name_plural = "Поколения"
+        ordering = ["model", "-year_from"]
+
+    def __str__(self):
+        years = f"{self.year_from}" + (f"–{self.year_to}" if self.year_to else "+")
+        return f"{self.model} {self.name} ({years})".strip()
+
+class VehicleModification(models.Model):
+    """Конкретная модификация: 2.5 AT, 3.0d xDrive и т.д."""
+    generation = models.ForeignKey(VehicleGeneration, on_delete=models.CASCADE, related_name="modifications")
+    name = models.CharField("Название модификации", max_length=150)
+    engine_code = models.CharField("Код двигателя", max_length=50, blank=True)
+    engine_volume = models.CharField("Объём", max_length=20, blank=True)
+    fuel = models.CharField("Топливо", max_length=30, blank=True)          # petrol / diesel / hybrid
+    transmission = models.CharField("КПП", max_length=50, blank=True)
+    drive = models.CharField("Привод", max_length=20, blank=True)           # FWD / RWD / AWD
+    year_from = models.PositiveSmallIntegerField(null=True, blank=True)
+    year_to = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Модификация"
+        verbose_name_plural = "Модификации"
+        ordering = ["generation", "name"]
+
+    def __str__(self):
+        return f"{self.generation} → {self.name}"
 
 
+# 4. Товар (Product)
 class Product(models.Model):
-    """Товар"""
-    GENDER_CHOICES = [
-        ('M','Мужской'),
-        ('F','Женский'),
-        ('U','Унисекс'),
+    # Внутренний артикул магазина: 000000001, 000000002...
+    article = models.CharField(
+        "Внутренний артикул",
+        max_length=9,
+        unique=True,
+        validators=[RegexValidator(r"^\d{9}$", "Артикул должен состоять из 9 цифр")]
+    )
+    name = models.CharField("Название", max_length=300)
+    slug = models.SlugField(max_length=320, unique=True, blank=True)
+    description = models.TextField("Описание", blank=True)
+    attributes = models.JSONField("Характеристики", default=dict, blank=True)
+
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products")
+    brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="products")
+
+    is_active = models.BooleanField("Активен", default=True)
+    is_new = models.BooleanField("Новинка", default=False)
+    is_bestseller = models.BooleanField("Хит продаж", default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Товар"
+        verbose_name_plural = "Товары"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["article"]),
+            models.Index(fields=["is_active", "category"]),
+            models.Index(fields=["brand"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(f"{self.article}-{self.name}")[:320]
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"[{self.article}] {self.name}"
+
+def get_next_article() -> str:
+    """Генерирует следующий артикул вида 000000001"""
+    last = Product.objects.order_by("-article").values_list("article", flat=True).first()
+    next_num = int(last) + 1 if last else 1
+    return f"{next_num:09d}"
+
+
+# 5. Внешние артикулы (OEM + кроссы)
+class ProductArticle(models.Model):
+    TYPE_CHOICES = [
+        ("oem", "Оригинал (OEM)"),
+        ("aftermarket", "Aftermarket"),
+        ("cross", "Кросс / аналог"),
+        ("other", "Другое"),
     ]
 
-    gender = models.CharField(
-        max_length=1,
-        choices=GENDER_CHOICES,
-        default='U',
-        verbose_name='Пол',
-        db_index=True,
-    )
-    name = models.CharField(max_length=300, verbose_name='Название товара')
-    slug = models.SlugField(max_length=300, unique=True, blank=True)
-    description = models.TextField(max_length=1000, verbose_name='Описание товара', blank=True)
-    attributes = models.JSONField(default=dict, blank=True, verbose_name='Характеристики')
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.CASCADE,
-        related_name='products',
-        verbose_name='Категория',
-    )
-    brand = models.ForeignKey(
-        Brand,
-        on_delete=models.PROTECT,
-        related_name='products',
-        verbose_name='Бренд',
-    )
-    model = models.ForeignKey(
-        ProductModel,
-        on_delete=models.SET_NULL,
-        related_name='products',
-        verbose_name='Модель',
-        null=True,
-        blank=True,
-    )
-
-    is_active = models.BooleanField(default=True, verbose_name='Активен')
-    is_new = models.BooleanField(default=False, verbose_name='Новинка')
-    is_bestseller = models.BooleanField(default=False, verbose_name='Хит продаж')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="articles")
+    number = models.CharField("Номер", max_length=60, db_index=True)
+    type = models.CharField("Тип", max_length=20, choices=TYPE_CHOICES, default="oem")
+    brand_name = models.CharField("Бренд номера", max_length=100, blank=True)  # Toyota, Bosch...
+    is_main = models.BooleanField("Основной", default=False)
 
     class Meta:
-        ordering = ['name']
-        verbose_name = 'Товар'
-        verbose_name_plural = 'Товары'
+        verbose_name = "Артикул / кросс"
+        verbose_name_plural = "Артикулы и кроссы"
+        unique_together = ["product", "number"]
         indexes = [
-            models.Index(fields=['category', 'is_active']),
-            models.Index(fields=['brand']),
-            models.Index(fields=['name']),
-            models.Index(fields=['model']),
+            models.Index(fields=["number"]),
         ]
 
     def __str__(self):
-        return self.name
+        return f"{self.number} ({self.get_type_display()})"
 
 
-class Color(models.Model):
-    color = models.CharField(max_length=50, verbose_name='Название цвета')
-    slug = models.SlugField(max_length=50)
-    hexcode = models.CharField(max_length=7, verbose_name='HEX код', blank=True)
-
-    class Meta:
-        verbose_name = 'Цвет'
-        verbose_name_plural = 'Цвета'
-    
-    def __str__(self):
-        return self.color
-
-
-class Size(models.Model):
-    """Размеры (S, M, L, 42, 43 и т.д.)"""
-    name = models.CharField(max_length=20, verbose_name='Размер модели')
-    slug = models.SlugField(max_length=20, unique=True)
+# 6. Применяемость
+class PartApplicability(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="applicabilities")
+    modification = models.ForeignKey(VehicleModification, on_delete=models.CASCADE, related_name="parts")
+    note = models.CharField("Примечание", max_length=200, blank=True)  # передний левый, с АБС и т.д.
+    is_confirmed = models.BooleanField("Подтверждено", default=True)
 
     class Meta:
-        ordering = ['name']
-        verbose_name = 'Размер'
-        verbose_name_plural = 'Размеры'
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
+        verbose_name = "Применяемость"
+        verbose_name_plural = "Применяемость"
+        unique_together = ["product", "modification"]
 
     def __str__(self):
-        return self.name
+        return f"{self.product.article} → {self.modification}"
 
 
-class ProductVariant(models.Model):
-    """СВЯЗЬ ТОВАРА С РАЗМЕРОМ (здесь живет ЦЕНА и КОЛИЧЕСТВО)"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sizes', verbose_name='Товар')
-    color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True)
-    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='products', verbose_name='Размер')
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name='Цена для этого товара'
-    )
-    quantity = models.PositiveIntegerField(default=0, verbose_name='Количество')
-
-    class Meta:
-        unique_together = ['product', 'color', 'size']
-        verbose_name = 'Выбор товара'
-        verbose_name_plural = 'Выборы товаров'
-        indexes = [
-            models.Index(fields=['product', 'color', 'size']),
-            models.Index(fields=['price']),
-            models.Index(fields=['quantity']),]
-    
-    def __str__(self):
-        return f"{self.product.name} - {self.size.name}: {self.price}₽"
-
-
-class ImageProduct(models.Model):
-    """Изображения товара"""
+# 7. Изображения
+class ProductImage(models.Model):
     IMAGE_TYPES = (
-        ('main', 'Главное'),
-        ('gallery', 'Галерея'),
-        ('model', 'Модель')
-    )
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name='images',
-        verbose_name='Товар'
-    )
-    image = models.ImageField(
-        upload_to='product/',
-        verbose_name='Изображение'
-    )
-    image_type = models.CharField(
-        max_length=10,
-        choices=IMAGE_TYPES,
-        default='gallery',
-        verbose_name='Тип изображения',
-    )
-    is_main = models.BooleanField(default=False, verbose_name='Главное')
-    order = models.PositiveIntegerField(default=0, verbose_name='Порядок')
-    color = models.ForeignKey(
-        Color,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='product'
+        ("main", "Главное"),
+        ("gallery", "Галерея"),
+        ("scheme", "Схема"),
     )
 
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="products/")
+    image_type = models.CharField(max_length=10, choices=IMAGE_TYPES, default="gallery")
+    is_main = models.BooleanField("Главное", default=False)
+    order = models.PositiveIntegerField("Порядок", default=0)
+
     class Meta:
-        ordering = ['order', '-is_main']
-        verbose_name = 'Изображение товара'
-        verbose_name_plural = 'Изображения товаров'
+        verbose_name = "Изображение товара"
+        verbose_name_plural = "Изображения товаров"
+        ordering = ["order", "-is_main"]
 
     def save(self, *args, **kwargs):
         if self.is_main:
-            ImageProduct.objects.filter(
-                product=self.product,
-                is_main=True,
-            ).exclude(pk=self.pk).update(is_main=False)
-        super().save(*args, **kwargs)
-    
-    def __str__(self):
-        return f'{self.product.name}'
-
-class Tag(models.Model):
-    name = models.CharField(max_length=100, verbose_name='Название тега', unique=True)
-    slug = models.SlugField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        ordering = ['name']
-        verbose_name = 'Тег'
-        verbose_name_plural = 'Теги'
-    
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
+            ProductImage.objects.filter(product=self.product, is_main=True).exclude(pk=self.pk).update(is_main=False)
         super().save(*args, **kwargs)
 
+    def __str__(self):
+        return f"Изображение {self.product.article}"
 
-class TagToProduct(models.Model):
-    """Связь тегов и продуктов"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='tags', verbose_name='Продукт')
-    tag = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name='products', verbose_name='Тег')
+# 8. Склады и остатки 
+class Warehouse(models.Model):
+    name = models.CharField("Название склада", max_length=100)
+    city = models.CharField("Город", max_length=100, db_index=True)
+    address = models.CharField("Адрес", max_length=255, blank=True)
+    is_active = models.BooleanField("Активен", default=True)
+    sort_order = models.PositiveIntegerField("Порядок", default=0)
 
     class Meta:
-        unique_together = ['product', 'tag']
-        verbose_name = 'Тег товара'
-        verbose_name_plural = 'Теги товаров'
-    
+        verbose_name = "Склад"
+        verbose_name_plural = "Склады"
+        ordering = ["sort_order", "city", "name"]
+
     def __str__(self):
-        return f'{self.product.name} - {self.tag.name}'
+        return f"{self.name} ({self.city})"
+
+class Stock(models.Model):
+    """
+    Здесь хранится ВСЁ, что зависит от склада:
+    - количество
+    - цена
+    - старая цена (для скидки)
+    """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stocks")
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name="stocks")
+
+    quantity = models.PositiveIntegerField("Количество", default=0)
+    price = models.DecimalField("Цена", max_digits=12, decimal_places=2)
+    price_old = models.DecimalField("Старая цена", max_digits=12, decimal_places=2, null=True, blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Остаток на складе"
+        verbose_name_plural = "Остатки на складах"
+        unique_together = ["product", "warehouse"]
+        indexes = [
+            models.Index(fields=["warehouse", "quantity"]),
+            models.Index(fields=["product", "warehouse"]),
+        ]
+
+    def __str__(self):
+        return f"{self.product.article} | {self.warehouse.city}: {self.quantity} шт. — {self.price} ₽"

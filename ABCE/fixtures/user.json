@@ -1,0 +1,54 @@
+[
+  {
+    "model": "user.customuser",
+    "pk": 2,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "demo_customer",
+      "first_name": "Иван",
+      "last_name": "Петров",
+      "email": "ivan@example.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-11-01T09:00:00Z",
+      "phone_number": "89991112233",
+      "address": "Москва, ул. Лесная, 10",
+      "telegram_id": null,
+      "created_at": "2026-11-01T09:00:00Z",
+      "updated_at": "2026-11-01T09:00:00Z",
+      "otp_hash": null,
+      "otp_created_at": null,
+      "otp_attempts": 0,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "user.customuser",
+    "pk": 3,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "demo_manager",
+      "first_name": "Анна",
+      "last_name": "Сидорова",
+      "email": "manager@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2026-11-02T09:00:00Z",
+      "phone_number": "89992223344",
+      "address": "Санкт-Петербург, Невский пр., 20",
+      "telegram_id": null,
+      "created_at": "2026-11-02T09:00:00Z",
+      "updated_at": "2026-11-02T09:00:00Z",
+      "otp_hash": null,
+      "otp_created_at": null,
+      "otp_attempts": 0,
+      "groups": [],
+      "user_permissions": []
+    }
+  }
+]

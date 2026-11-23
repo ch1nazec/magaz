@@ -1,255 +1,195 @@
-from rest_framework import (viewsets,
-                            permissions, generics)
-
+from rest_framework import viewsets, permissions, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Min, OuterRef, Prefetch, Subquery, Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from django.db.models import F
 
+from .models import (
+    Category, Brand, Product, ProductArticle, ProductImage,
+    VehicleMake, VehicleModel, VehicleGeneration, VehicleModification,
+    PartApplicability, Warehouse, Stock
+)
+from .serializer import (
+    CategorySerializer, CategoryListSerializer, BrandSerializer,
+    VehicleMakeSerializer, VehicleModelSerializer,
+    VehicleGenerationSerializer, VehicleModificationSerializer,
+    ProductListSerializer, ProductDetailSerializer, ProductWriteSerializer,
+    ProductArticleSerializer, ProductImageSerializer,
+    WarehouseSerializer, StockSerializer
+)
+from .filters import ProductFilter, StockFilter
 
-from rest_framework.response import Response
-from rest_framework.request import Request
-from rest_framework import status
-from rest_framework.decorators import action
-from .models import Product, Category, ImageProduct, Color, Size, ProductVariant, Tag, TagToProduct, Brand, ProductModel
-from .serializer import (ProductSerializer, ImageProductSerializer, BrandSerializer,
-                         CategoryListSerializer, ColorSerializer,
-                        CategorySerializer, SizeSerializer,
-                        TagToProductSerializer, TagSerializer, ProductVariantSerializer)
-from others.permissions import BaseAdminViewSet
-from django_filters.rest_framework import DjangoFilterBackend
-
-from rest_framework import filters
-from .filters import ProductVariantFilter, BrandsFilter
-
-from others.decorators import auto_clear_cache, auto_set_cache
-
-
-# Create your views here.
-# @auto_clear_cache(pattern='product_list_*')
-# @auto_set_cache(pattern='product_list_')
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    lookup_field = 'slug'
-    serializer_class = ProductSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-
-    search_fields = ['name', 'description', 'brand__slug']
-    filterset_fields = ['gender', 'category', 'name', 'is_active', 'brand__slug']
-    ordering_fields = ['name', 'gender', 'product_model__name', 'product_model__brand__name']
-
+class BaseAdminViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [permissions.IsAdminUser]
-        else:
-            permission_classes = [permissions.AllowAny]
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
 
-        return [permission() for permission in permission_classes]
+# Категории
 
-
-@auto_clear_cache(pattern='category_product_*')
-@auto_set_cache(pattern='category_product_')
-class ProductForCategory(generics.ListAPIView):
-    serializer_class = ProductSerializer
-    
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_class = BrandsFilter
-    ordering_fields = ['name']
-
-    # @method_decorator(cache_page(60 * 15))
-    # def dispatch(self, request, *args, **kwargs):
-    #     return super().dispatch(request, *args, **kwargs)
-
-    def get_queryset(self):
-        category_slug = self.kwargs.get('category_slug')
-
-        try:
-            category = Category.objects.get(slug=category_slug)
-        except Category.DoesNotExist:
-            return Product.objects.none()
-        
-        all_category_id = category.get_descendants(include_self=True).values_list('id', flat=True)
-        return Product.objects.filter(
-            category_id__in=all_category_id,
-            is_active=True).select_related('category', 'brand',).prefetch_related('images')
-    
-    @method_decorator(cache_page(60 * 15))
-    def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
-
-        category_slug = self.kwargs.get('category_slug')
-        try:
-            category = Category.objects.get(slug=category_slug)
-            all_category_id = category.get_descendants(include_self=True).values_list('id', flat=True)
-
-            active_brands = Product.objects.filter(
-                category__id__in=all_category_id,
-                is_active=True, brand__isnull=False
-            ).values_list('brand_id', flat=True).distinct()
-
-            brands = Brand.objects.filter(
-                id__in=active_brands).values(
-                    brand_name=F('name'),
-                    brand_slug=F('slug'),)
-
-            response.data['available_brands'] = list(brands)
-        except Category.DoesNotExist:
-            response.data['available_brands'] = []
-        return response
-
-
-@auto_clear_cache(pattern='productvariant_list_*')
-@auto_set_cache(pattern='productvariant_list_')
-class ProductVariantViewSet(BaseAdminViewSet):
-    serializer_class = ProductVariantSerializer
-    queryset = ProductVariant.objects.all().select_related(
-        'product',
-        'product__category',
-        'product__brand',
-        'product__model',
-        'color',
-        'size')
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = ProductVariantFilter
-    search_fields = ['product__name', 'product__slug']
-    ordering_fields = ['product__name', 'price']
-    ordering = ['product__name']
-    
-
-class ProductModelFindViewSet(BaseAdminViewSet):
-    serializer_class = ProductVariantSerializer
-    pagination_class = None
-    def get_queryset(self):
-        queryset = ProductVariant.objects.select_related(
-            'product__category', 'product__brand', 'product__model', 'color', 'size'
-        ).order_by('id')
-
-        slug_group = self.request.query_params.get('model')
-        if slug_group:
-            slug_group = slug_group.strip('/')
-            return queryset.filter(product__model__slug=slug_group)
-        
-        return queryset.none()
-
-    def list(self, request, *args, **kwargs):
-        slug_group = request.query_params.get('model')
-        if slug_group:
-            slug_group = slug_group.strip('/')
-
-        queryset = self.get_queryset()
-        
-        try:
-            model_obj = ProductModel.objects.get(slug=slug_group)
-            serializer = self.get_serializer(queryset, many=True)
-            custom_data = {
-                'model': model_obj.name,
-                'products': serializer.data
-            }
-            return Response(custom_data)
-
-        except ProductModel.DoesNotExist:
-            return Response({
-                'model': None,
-                'products': [],
-                'available_model': []
-            }, status=status.HTTP_200_OK)
-
-
-@auto_clear_cache(pattern='category_list_*')
-@auto_set_cache(pattern='category_list_')
 class CategoryViewSet(BaseAdminViewSet):
     queryset = Category.objects.all()
+    lookup_field = "slug"
     pagination_class = None
-    lookup_field = 'slug'
 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action == "list":
             return CategoryListSerializer
         return CategorySerializer
-    
-    @action(detail=False, methods=['get'], pagination_class=None)
-    def tree(self, request: Request):
-        categories = Category.objects.filter(parent__isnull=True)
-        serializer = CategorySerializer(categories, context={'request': request}, many=True)
+
+    @action(detail=False, methods=["get"])
+    def tree(self, request):
+        roots = Category.objects.filter(parent=None).prefetch_related("children")
+        serializer = CategorySerializer(roots, many=True, context={"request": request})
         return Response(serializer.data)
 
+# Бренды 
 
-class ImagesViewSet(BaseAdminViewSet):
-    queryset = ImageProduct.objects.all()
-    serializer_class = ImageProductSerializer
+class BrandViewSet(BaseAdminViewSet):
+    queryset = Brand.objects.all()
+    serializer_class = BrandSerializer
+    lookup_field = "slug"
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering = ["name"]
+
+# Автомобили
+
+class VehicleMakeViewSet(BaseAdminViewSet):
+    queryset = VehicleMake.objects.all()
+    serializer_class = VehicleMakeSerializer
+    lookup_field = "slug"
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering = ["name"]
+
+class VehicleModelViewSet(BaseAdminViewSet):
+    queryset = VehicleModel.objects.select_related("make")
+    serializer_class = VehicleModelSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["make", "make__slug"]
+    search_fields = ["name"]
+    ordering = ["make__name", "name"]
+
+class VehicleGenerationViewSet(BaseAdminViewSet):
+    queryset = VehicleGeneration.objects.select_related("model__make")
+    serializer_class = VehicleGenerationSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["model", "model__slug", "model__make__slug"]
+    ordering = ["-year_from"]
+
+class VehicleModificationViewSet(BaseAdminViewSet):
+    queryset = VehicleModification.objects.select_related("generation__model__make")
+    serializer_class = VehicleModificationSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["generation", "fuel", "drive"]
+    search_fields = ["name", "engine_code"]
+    ordering = ["name"]
+
+# Товары
+
+class ProductViewSet(viewsets.ModelViewSet):
+    lookup_field = "slug"
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ProductFilter
+    search_fields = ["name", "article", "articles__number", "brand__name"]
+    ordering_fields = ["name", "article", "created_at", "price", "quantity"]
+    ordering = ["-created_at"]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return ProductWriteSerializer
+        if self.action == "retrieve":
+            return ProductDetailSerializer
+        return ProductListSerializer
 
     def get_queryset(self):
-        queryset = ImageProduct.objects.all().select_related('product', 'color')
-        
-        product_id = self.request.query_params.get('product')
-        if product_id:
-            queryset = queryset.filter(product_id=product_id)
-        
-        color_id = self.request.query_params.get('color')
-        if color_id:
-            queryset = queryset.filter(color_id=color_id)
+        qs = (
+            Product.objects
+            .filter(is_active=True)
+            .select_related("brand", "category")
+        )
 
-        return queryset
-    
-    @action(detail=False, methods=['post'], url_path='upload-multiple')
-    def upload_multiple(self, request):
-        images = request.FILES.getlist('images')
-        product_id = request.data.get('product_id')
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "images",
+                    queryset=ProductImage.objects.order_by("order", "-is_main"),
+                ),
+                "articles",
+                "stocks__warehouse",
+                "applicabilities__modification__generation__model__make",
+            )
+        else:
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "images",
+                    queryset=ProductImage.objects.order_by("order", "-is_main"),
+                    to_attr="prefetched_images"
+                )
+            )
 
-        if not product_id:
-            return Response(data={
-                'error': 'product_id обязателен!'
-            }, status=status.HTTP_400_BAD_REQUEST)
+        warehouse_id = self.request.query_params.get("warehouse")
+        city = self.request.query_params.get("city")
 
-        all_images = []
-        for image in images:
-            img = ImageProduct.objects.create(
-                product_id=product_id,
-                image=image,
-                image_type=request.data.get('image_type', 'gallery'))
-            all_images.append(img)
-        
-        serializer = self.get_serializer(all_images, many=True)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-    @action(detail=True, methods=['post'])
-    def set_main(self, request, pk=None):
-        image = self.get_object()
+        has_valid_warehouse = bool(warehouse_id and warehouse_id.isdigit())
 
-        ImageProduct.objects.filter(
-            product=image.product,
-            is_main=True,
-        ).exclude(pk=image.pk).update(is_main=False)
+        if has_valid_warehouse or city:
+            stock_qs = Stock.objects.all()
+            if has_valid_warehouse:
+                stock_qs = stock_qs.filter(warehouse_id=int(warehouse_id))
+            if city:
+                stock_qs = stock_qs.filter(warehouse__city__iexact=city)
 
-        image.is_main = True
-        image.save()
-        return Response({'status': 'Success!'})
-    
-@auto_clear_cache(pattern='color_list_*')
-@auto_set_cache(pattern='color_list_', timeout=3600)
-class ColorViewSet(BaseAdminViewSet):
-    serializer_class = ColorSerializer
-    queryset = Color.objects.all()
+            stock_subquery = stock_qs.filter(product=OuterRef("pk")).order_by("id")
 
-@auto_clear_cache(pattern='size_list_*')
-@auto_set_cache(pattern='size_list_', timeout=3600)
-class SizeViewSet(BaseAdminViewSet):
-    serializer_class = SizeSerializer
-    queryset = Size.objects.all()
+            qs = qs.annotate(
+                price=Subquery(stock_subquery.values("price")[:1]),
+                price_old=Subquery(stock_subquery.values("price_old")[:1]),
+                quantity=Subquery(stock_subquery.values("quantity")[:1]),
+            )
+        else:
+            qs = qs.annotate(
+                price=Min("stocks__price"),
+                quantity=Sum("stocks__quantity"),
+            )
 
-@auto_clear_cache(pattern='tag_list_*')
-@auto_set_cache(pattern='tag_list_', timeout=3600)
-class TagViewSet(BaseAdminViewSet):
-    serializer_class = TagSerializer
-    queryset = Tag.objects.all()
+        return qs.distinct()
 
-@auto_clear_cache(pattern='tagtoproduct_list_*')
-@auto_set_cache(pattern='tagtoproduct_list_', timeout=3600)
-class TagToProductViewSet(BaseAdminViewSet):
-    serializer_class = TagToProductSerializer
-    queryset = TagToProduct.objects.all()
 
-@auto_clear_cache(pattern='brands_list_*')
-@auto_set_cache(pattern='brands_list_', timeout=3600)
-class BrandViewSet(BaseAdminViewSet):
-    serializer_class = BrandSerializer
-    queryset = Brand.objects.all()
+# Остальное
+
+class ProductArticleViewSet(BaseAdminViewSet):
+    queryset = ProductArticle.objects.select_related("product")
+    serializer_class = ProductArticleSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ["product", "type", "is_main"]
+    search_fields = ["number"]
+
+class ProductImageViewSet(BaseAdminViewSet):
+    queryset = ProductImage.objects.select_related("product")
+    serializer_class = ProductImageSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["product", "image_type", "is_main"]
+
+class WarehouseViewSet(BaseAdminViewSet):
+    queryset = Warehouse.objects.filter(is_active=True)
+    serializer_class = WarehouseSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "city"]
+    ordering = ["sort_order", "city"]
+
+class StockViewSet(BaseAdminViewSet):
+    queryset = Stock.objects.select_related("product", "warehouse")
+    serializer_class = StockSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = StockFilter
+    ordering_fields = ["price", "quantity", "updated_at"]
+    ordering = ["-updated_at"]

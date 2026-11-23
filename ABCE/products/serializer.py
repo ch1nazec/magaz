@@ -1,201 +1,194 @@
 from rest_framework import serializers
-from .models import (Category, Brand, ProductModel,
-                     Product, Color, Size,
-                     ProductVariant, ImageProduct, Tag,
-                     TagToProduct)
+from .models import (
+    Category, Brand, Product, ProductArticle, ProductImage,
+    VehicleMake, VehicleModel, VehicleGeneration, VehicleModification,
+    PartApplicability, Warehouse, Stock
+)
 
-
-def check_name(name, value):
-    """Проверка название без цифр"""
-    if value.isalpha():
-            return value
-    else:
-        raise serializers.ValidationError(f'{name} не может называться цифрами.')
-
+# Категории
 
 class CategorySerializer(serializers.ModelSerializer):
-    """Сериализатор категорий"""
     children = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = [
-            'id', 'name', 'slug', 'image', 'image_url',
-            'parent', 'children'
-        ]
-    
-    def validate_name(self, value: str) -> str:
-        return check_name(name='Категория', value=value)
-    
+        fields = ["id", "name", "slug", "image", "image_url", "parent", "children"]
+
     def get_children(self, obj):
-        children = obj.children.all()
-        if children:
-            return CategorySerializer(obj.children.all(), many=True).data
-        return []
-    
+        qs = obj.get_children()
+        return CategorySerializer(qs, many=True, context=self.context).data if qs.exists() else []
+
     def get_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.image and hasattr(obj.image, 'url') and request:
+        request = self.context.get("request")
+        if obj.image and hasattr(obj.image, "url") and request:
             return request.build_absolute_uri(obj.image.url)
-        return
-    
-
-class BrandSerializer(serializers.ModelSerializer):
-    """Сериализатор брендов"""
-    class Meta:
-        model = Brand
-        fields = [
-            'id', 'name', 'slug',
-            'logo',]
-
-
-class ProductModelSerializer(serializers.ModelSerializer):
-    """Сериализатор моделей"""
-    brand = BrandSerializer()
-    class Meta:
-        model = ProductModel
-        fields = [
-            'name', 'brand', 'slug',
-            'description'
-        ]
-
-class ColorSerializer(serializers.ModelSerializer):
-    """Сериализатор цвета"""
-    class Meta:
-        model = Color
-        fields = [
-            "id", 'color', 'hexcode', 'slug'
-        ]
-
-
-class SizeSerializer(serializers.ModelSerializer):
-    """Сериализатор размеров"""
-    class Meta:
-        model = Size
-        fields = ["id", 'name']
-
-
-class ImageProductSerializer(serializers.ModelSerializer):
-    """Сериализатор изображений"""
-    product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), source='product', write_only=True,)
-    product = serializers.PrimaryKeyRelatedField(read_only=True)
-    color = ColorSerializer(read_only=True)
-
-    class Meta:
-        model = ImageProduct
-        fields = [
-            "id", 'product_id', 'product',
-            'image', 'color', 'image_type',
-            'is_main', 'order', ]
-
-
-class ProductSerializer(serializers.ModelSerializer):
-    """Сериализатор продуктов"""
-    product_model = ProductModelSerializer(source='model', read_only=True)
-    price_s = serializers.SerializerMethodField()
-    images = ImageProductSerializer(read_only=True, many=True)
-    image_main = serializers.SerializerMethodField()
-
-    category_slug = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Product
-        fields = [ 'id',
-            'gender', 'name', 'price_s',
-            'description', 'attributes',
-            'is_active', 'is_new', 'is_bestseller', 'product_model',
-            'slug', 'category_slug', 'brand_id', 'image_main', 'images',]
-        extra_kwargs = { 'url': {'lookup_field': 'slug'}}
-    
-    def get_price_s(self, obj):
-        min_price = (obj.sizes.filter(product=obj).first())
-        if min_price:
-            return min_price.price
-    
-    def get_image_main(self, obj):
-        main_image = obj.images.filter(image_type='main').first()
-        if main_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(main_image.image.url)
-            return main_image.image.url
         return None
-    
-    def get_category_slug(self, obj):
-        return obj.category.slug if obj.category else None
-
-
-class ProductVariantSerializer(serializers.ModelSerializer):
-    """Сериализатор вариантов продукта"""
-    product = ProductSerializer()
-    product_id = serializers.SerializerMethodField()
-
-    color = ColorSerializer(read_only=True)
-    size = SizeSerializer(read_only=True)
-
-    color_id = serializers.PrimaryKeyRelatedField(
-        queryset=Color.objects.all(), source='color', write_only=True)
-    size_id = serializers.PrimaryKeyRelatedField(
-        queryset=Size.objects.all(), source='size', write_only=True)
-
-    class Meta:
-        model = ProductVariant
-        fields = [
-            'id', 'product_id', 'product',
-            'price', 'quantity', 'color',
-            'size', 'color_id', 'size_id']
-    def get_product_id(self, obj):
-        return obj.product.id
-
-
-class TagSerializer(serializers.ModelSerializer):
-    """Сериализатор тегов"""
-    class Meta:
-        model = Tag
-        fields = ["id", 'name', "slug"]
-
-
-class TagToProductSerializer(serializers.ModelSerializer):
-    tag_id = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(), source='tag', write_only=True
-    )
-    product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(), source='product', write_only=True
-    )
-    tag = TagSerializer(read_only=True)
-    product = ProductSerializer(read_only=True)
-    
-    class Meta:
-        model = TagToProduct
-        fields = ['id', 'tag', 'product', 'tag_id', 'product_id']
-
-
 
 class CategoryListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
+        fields = ["id", "name", "slug", "image"]
+
+#Бренды
+class BrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = ["id", "name", "slug", "logo"]
+
+#  Автомобили 
+class VehicleMakeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VehicleMake
+        fields = ["id", "name", "slug", "logo"]
+
+class VehicleModelSerializer(serializers.ModelSerializer):
+    make_name = serializers.CharField(source="make.name", read_only=True)
+
+    class Meta:
+        model = VehicleModel
+        fields = ["id", "name", "slug", "make", "make_name"]
+
+class VehicleGenerationSerializer(serializers.ModelSerializer):
+    model_name = serializers.CharField(source="model.name", read_only=True)
+    make_name = serializers.CharField(source="model.make.name", read_only=True)
+
+    class Meta:
+        model = VehicleGeneration
+        fields = ["id", "name", "year_from", "year_to", "body", "model", "model_name", "make_name"]
+
+class VehicleModificationSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = VehicleModification
         fields = [
-            'id', 'name',
-            'image', 'slug'
+            "id", "name", "engine_code", "engine_volume", "fuel",
+            "transmission", "drive", "year_from", "year_to",
+            "generation", "full_name"
         ]
-    
-    def get_image_url(self, obj):
-        request = self.context.get('request')
+
+    def get_full_name(self, obj):
+        return str(obj)
+
+# Товар
+class ProductArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductArticle
+        fields = ["id", "number", "type", "brand_name", "is_main"]
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductImage
+        fields = ["id", "url", "image_type", "is_main", "order"]
+
+    def get_url(self, obj):
+        request = self.context.get("request")
         if obj.image and request:
             return request.build_absolute_uri(obj.image.url)
+        return None
 
+class StockShortSerializer(serializers.ModelSerializer):
+    city = serializers.CharField(source="warehouse.city", read_only=True)
+    warehouse_name = serializers.CharField(source="warehouse.name", read_only=True)
+
+    class Meta:
+        model = Stock
+        fields = ["id", "warehouse", "warehouse_name", "city", "quantity", "price", "price_old"]
 
 class ProductListSerializer(serializers.ModelSerializer):
+    brand = BrandSerializer(read_only=True)
+    category_slug = serializers.CharField(source="category.slug", read_only=True)
     main_image = serializers.SerializerMethodField()
+
+    # Эти поля появляются только когда выбран склад/город
+    price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, required=False)
+    quantity = serializers.IntegerField(read_only=True, required=False)
+    price_old = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, required=False)
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'slug',
-            'is_active', 'is_new', 'is_bestseller'
+            "id", "article", "name", "slug",
+            "brand", "category_slug",
+            "is_new", "is_bestseller",
+            "main_image",
+            "price", "price_old", "quantity",
         ]
-    
+
     def get_main_image(self, obj):
-        images = obj.images.filter(is_main=True).first()
-        return images.image.url if images else None
+        images = getattr(obj, "prefetched_images", None)
+        if images is None:
+            images = list(obj.images.all())
+
+        main = next((img for img in images if img.is_main), None)
+        if not main and images:
+            main = images[0]
+
+        if main and main.image:
+            request = self.context.get("request")
+            return request.build_absolute_uri(main.image.url) if request else main.image.url
+        return None
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    brand = BrandSerializer(read_only=True)
+    category = CategoryListSerializer(read_only=True)
+    articles = ProductArticleSerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+    stocks = StockShortSerializer(many=True, read_only=True)
+    applicabilities = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            "id", "article", "name", "slug", "description", "attributes",
+            "brand", "category",
+            "is_active", "is_new", "is_bestseller",
+            "articles", "images", "stocks", "applicabilities",
+            "created_at", "updated_at",
+        ]
+
+    def get_applicabilities(self, obj):
+        apps = obj.applicabilities.select_related(
+            "modification__generation__model__make"
+        ).all()
+        return [
+            {
+                "id": a.id,
+                "note": a.note,
+                "is_confirmed": a.is_confirmed,
+                "modification": str(a.modification),
+                "modification_id": a.modification_id,
+            }
+            for a in apps
+        ]
+
+class ProductWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            "article", "name", "description", "attributes",
+            "category", "brand",
+            "is_active", "is_new", "is_bestseller",
+        ]
+
+# Остальное
+class WarehouseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Warehouse
+        fields = ["id", "name", "city", "address", "is_active", "sort_order"]
+
+class StockSerializer(serializers.ModelSerializer):
+    product_article = serializers.CharField(source="product.article", read_only=True)
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    city = serializers.CharField(source="warehouse.city", read_only=True)
+
+    class Meta:
+        model = Stock
+        fields = [
+            "id", "product", "product_article", "product_name",
+            "warehouse", "city",
+            "quantity", "price", "price_old", "updated_at"
+        ]

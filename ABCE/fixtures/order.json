@@ -1,0 +1,74 @@
+[
+  {
+    "model": "order.order",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "status": "new",
+      "phone_number": "+7 (999) 111-22-33",
+      "address": "Москва, ул. Лесная, 10",
+      "comment": "Позвонить за час до доставки",
+      "warehouse": 1,
+      "total_amount": "13870.00",
+      "created_at": "2026-11-20T11:00:00Z",
+      "updated_at": "2026-11-20T11:00:00Z"
+    }
+  },
+  {
+    "model": "order.order",
+    "pk": 2,
+    "fields": {
+      "user": 2,
+      "status": "shipped",
+      "phone_number": "+7 (999) 222-33-44",
+      "address": "Санкт-Петербург, Невский пр., 20",
+      "comment": "",
+      "warehouse": 2,
+      "total_amount": "5200.00",
+      "created_at": "2026-11-18T14:30:00Z",
+      "updated_at": "2026-11-19T09:00:00Z"
+    }
+  },
+  {
+    "model": "order.orderitem",
+    "pk": 1,
+    "fields": {
+      "order": 1,
+      "product": 1,
+      "warehouse": 1,
+      "article": "000000001",
+      "product_name": "Колодки тормозные передние Brembo",
+      "warehouse_name": "Центральный склад",
+      "price": "6490.00",
+      "quantity": 2
+    }
+  },
+  {
+    "model": "order.orderitem",
+    "pk": 2,
+    "fields": {
+      "order": 1,
+      "product": 3,
+      "warehouse": 1,
+      "article": "000000003",
+      "product_name": "Фильтр масляный Mann",
+      "warehouse_name": "Центральный склад",
+      "price": "890.00",
+      "quantity": 1
+    }
+  },
+  {
+    "model": "order.orderitem",
+    "pk": 3,
+    "fields": {
+      "order": 2,
+      "product": 2,
+      "warehouse": 2,
+      "article": "000000002",
+      "product_name": "Диск тормозной передний Bosch",
+      "warehouse_name": "Северный склад",
+      "price": "5200.00",
+      "quantity": 1
+    }
+  }
+]
